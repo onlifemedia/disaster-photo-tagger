@@ -1,0 +1,2407 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>災害圖資 AI 辨識工具</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F3EEE3;
+    --paper-deep:#EAE3D2;
+    --ink:#24211C;
+    --ink-soft:#5B564B;
+    --amber:#C6791E;
+    --amber-deep:#9A5B12;
+    --teal:#1E5951;
+    --rust:#A93E2C;
+    --line:#D9D0BB;
+    --line-soft:#E5DFCF;
+    --white:#FFFDF8;
+    --shadow: 0 8px 24px rgba(36,33,28,0.10);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:
+      radial-gradient(ellipse at top left, rgba(198,121,30,0.06), transparent 45%),
+      radial-gradient(ellipse at bottom right, rgba(30,89,81,0.07), transparent 50%),
+      var(--paper);
+    color:var(--ink);
+    font-family:'Noto Sans TC', sans-serif;
+  }
+  input[type=file]{display:none;}
+  .btn{
+    font-family:'Noto Sans TC',sans-serif;
+    font-weight:700;
+    font-size:14px;
+    border:none;
+    border-radius:6px;
+    padding:12px 20px;
+    cursor:pointer;
+    transition:transform .1s, background .15s, box-shadow .15s;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn-primary{background:var(--ink);color:var(--paper);}
+  .btn-primary:hover{background:#3a352c;}
+  .btn-amber{background:var(--amber);color:#fff;}
+  .btn-amber:hover{background:var(--amber-deep);}
+  .btn-outline{background:transparent;color:var(--ink);border:1.5px solid var(--line);}
+  .btn-outline:hover{border-color:var(--ink);}
+  .btn:disabled{opacity:0.45;cursor:not-allowed;}
+  .btn-sm{padding:8px 14px;font-size:12.5px;border-radius:5px;}
+  .btn-lg{padding:14px 22px;font-size:15px;border-radius:8px;}
+
+  /* ---------- Shell / dashboard layout ---------- */
+  .shell{
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .topbar{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:14px 24px;
+    border-bottom:3px solid var(--ink);
+    background:var(--paper);
+    flex-shrink:0;
+  }
+  .topbar-title{
+    font-family:'Noto Serif TC', serif;
+    font-weight:900;
+    font-size:22px;
+    letter-spacing:0.02em;
+  }
+  .topbar-sub{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.1em;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+    margin-top:2px;
+  }
+  .stamp{
+    font-family:'JetBrains Mono', monospace;
+    border:2px solid var(--rust);
+    color:var(--rust);
+    padding:6px 12px;
+    border-radius:4px;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:0.06em;
+    text-align:center;
+    white-space:nowrap;
+  }
+  .stamp b{display:block;font-size:16px;font-family:'JetBrains Mono',monospace;}
+
+  .workspace{
+    flex:1;
+    display:flex;
+    min-height:0;
+    overflow:hidden;
+  }
+  .album-panel{
+    padding:18px;
+    border-top:1px solid var(--line-soft);
+    overflow:auto;
+    background:var(--paper);
+  }
+  .album-panel.is-collapsed{display:none;}
+  .album-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px;}
+  .album-panel-title{font-size:18px;font-weight:800;color:var(--ink);}
+  .album-panel-sub{font-size:12px;color:var(--ink-soft);margin-top:4px;}
+  .album-create-row{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;}
+  .album-create-row input{
+    border:1.5px solid var(--line);border-radius:6px;padding:8px 10px;
+    font-size:12px;background:var(--white);color:var(--ink);min-width:220px;
+  }
+  .album-create-row textarea{
+    border:1.5px solid var(--line);border-radius:6px;padding:8px 10px;
+    font-size:12px;background:var(--white);color:var(--ink);min-width:260px;min-height:36px;resize:vertical;
+  }
+  .album-select-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .album-select-row label{font-size:12px;color:var(--ink-soft);font-weight:700;}
+  .album-select-row select{
+    border:1.5px solid var(--line);border-radius:6px;padding:8px 10px;
+    font-size:12px;background:var(--white);color:var(--ink);min-width:320px;max-width:100%;
+  }
+  .album-select-meta{font-size:12px;color:var(--ink-soft);line-height:1.5;width:100%;}
+  .album-pill{
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--ink-soft);
+    background:var(--paper);border:1px solid var(--line-soft);border-radius:999px;padding:3px 7px;
+  }
+  .album-context{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:10px 18px;border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);
+    background:var(--white);
+  }
+  .album-context-title{font-weight:800;color:var(--ink);}
+  .album-context-meta{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+  .album-context-actions{display:flex;gap:8px;flex-wrap:wrap;}
+
+  /* ---------- Prompt column (left, 1/3) ---------- */
+  .prompt-col{
+    width:34%;
+    min-width:300px;
+    max-width:460px;
+    display:flex;
+    flex-direction:column;
+    padding:18px;
+    gap:12px;
+    overflow-y:auto;
+    border-right:1px solid var(--line-soft);
+    background:var(--white);
+    flex-shrink:0;
+  }
+  .prompt-col-label{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.12em;
+    text-transform:uppercase;color:var(--ink-soft);display:flex;align-items:center;gap:8px;
+  }
+  .prompt-col-label .step{color:var(--amber-deep);font-weight:700;}
+  .prompt-intro{font-size:12px;color:var(--ink-soft);line-height:1.6;}
+  .gemini-config-box{
+    display:flex;flex-direction:column;gap:8px;
+    padding:12px;border:1px solid var(--line-soft);border-radius:8px;background:var(--paper);
+  }
+  .gemini-config-row{display:flex;gap:8px;}
+  .gemini-config-row select{
+    border:1.5px solid var(--line);border-radius:6px;padding:8px 10px;
+    font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--white);color:var(--ink);
+  }
+  .gemini-config-row input[type=password]{
+    flex:1;border:1.5px solid var(--line);border-radius:6px;padding:8px 10px;
+    font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--white);color:var(--ink);min-width:0;
+  }
+  .gemini-note{font-size:10.5px;color:var(--amber-deep);line-height:1.5;}
+  .prompt-col-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .prompt-version-badge{
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--amber-deep);
+    background:#FBF0DD;padding:4px 9px;border-radius:20px;font-weight:700;white-space:nowrap;
+  }
+  .prompt-version-badge.is-unsaved{color:var(--ink-soft);background:var(--paper-deep);}
+  .prompt-select-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-shrink:0;}
+  .prompt-select-row label{font-size:11.5px;color:var(--ink-soft);white-space:nowrap;min-width:96px;}
+  .prompt-select-row select, .prompt-select-row input{
+    flex:1;border:1.5px solid var(--line);border-radius:7px;padding:7px 10px;
+    font-family:'Noto Sans TC',sans-serif;font-size:12.5px;background:var(--paper);color:var(--ink);
+    min-width:0;
+  }
+  .prompt-select-row input:focus, .prompt-select-row select:focus{outline:2px solid var(--amber);outline-offset:1px;}
+  .prompt-textarea{
+    flex:1;
+    min-height:180px;
+    width:100%;border:1.5px solid var(--line);border-radius:8px;
+    padding:12px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.6;
+    background:var(--paper);color:var(--ink);resize:none;
+  }
+  .prompt-textarea:focus{outline:2px solid var(--amber);outline-offset:1px;}
+  .run-scope-box{
+    background:var(--white);border:1px solid var(--line-soft);border-radius:8px;
+    padding:10px 12px;margin-bottom:12px;flex-shrink:0;
+  }
+  .run-scope-label{font-size:11.5px;color:var(--ink-soft);margin-bottom:8px;}
+  .run-scope-list{display:flex;flex-direction:column;gap:6px;max-height:140px;overflow-y:auto;}
+  .run-scope-item{display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer;}
+  .run-scope-item.is-current{font-weight:700;}
+  .run-scope-item input[type="checkbox"]{flex-shrink:0;}
+  .run-scope-current-tag{font-size:10px;font-weight:700;color:var(--amber-deep);background:#FBEAC7;padding:1px 6px;border-radius:20px;}
+  .prompt-run-row{display:flex;flex-direction:column;gap:8px;flex-shrink:0;}
+  .progress-wrap{height:7px;background:var(--line-soft);border-radius:4px;overflow:hidden;}
+  .progress-bar{height:100%;width:0%;background:var(--teal);transition:width .25s;}
+  .toolbar-msg{font-size:11.5px;color:var(--ink-soft);font-family:'JetBrains Mono',monospace;}
+  .counter-inline{
+    font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-soft);
+    background:var(--paper-deep);padding:6px 10px;border-radius:6px;white-space:nowrap;
+  }
+
+  /* ---------- Photo column (right, 2/3) ---------- */
+  .photo-col{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    padding:18px;
+    min-width:0;
+    overflow:hidden;
+  }
+  .project-bar{
+    background:var(--white);border:1px solid var(--line-soft);border-radius:10px;
+    padding:10px 14px;margin-bottom:12px;flex-shrink:0;
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .project-bar-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .project-bar-label{font-weight:700;font-size:12.5px;white-space:nowrap;min-width:52px;}
+  .project-bar select{
+    flex:1;min-width:260px;border:1.5px solid var(--line);border-radius:7px;padding:7px 10px;
+    font-family:'Noto Sans TC',sans-serif;font-size:12.5px;background:var(--paper);color:var(--ink);
+  }
+  .project-bar-hint{font-size:11.5px;color:var(--ink-soft);line-height:1.5;flex:1;min-width:240px;}
+  .photo-toolbar{
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--white);border:1px solid var(--line-soft);border-radius:10px;
+    padding:12px 14px;margin-bottom:12px;flex-shrink:0;
+  }
+  .tray-mini{
+    display:flex;align-items:center;gap:10px;flex:1;min-width:220px;
+    border:2px dashed var(--line);border-radius:8px;padding:10px 14px;
+    transition:border-color .15s, background .15s;
+  }
+  .tray-mini.drag{border-color:var(--amber);background:#FBF4E8;}
+  .tray-mini-icon{
+    width:34px;height:34px;border-radius:7px;background:var(--paper-deep);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .tray-mini-icon svg{width:18px;height:18px;stroke:var(--ink-soft);}
+  .tray-mini-text{font-size:12px;line-height:1.4;}
+  .tray-mini-text b{font-weight:700;}
+  .photo-toolbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+
+  .grid-wrap{flex:1;overflow-y:auto;min-height:0;}
+
+  /* View tabs (grid <-> map, inside photo-col) */
+  .view-tabs{display:flex;gap:6px;margin-bottom:10px;flex-shrink:0;}
+  .view-tab{
+    font-family:'Noto Sans TC',sans-serif;font-weight:700;font-size:12.5px;
+    padding:8px 14px;border-radius:20px;border:1.5px solid var(--line);
+    background:var(--white);color:var(--ink-soft);cursor:pointer;
+  }
+  .view-tab.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  .map-in-col{flex:1;min-height:0;overflow-y:auto;display:none;}
+  .map-in-col.active{display:block;}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(168px, 1fr));
+    gap:14px;
+    align-content:start;
+  }
+  .card{
+    background:var(--white);
+    border:1px solid var(--line-soft);
+    border-radius:10px;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+    position:relative;
+    display:flex;flex-direction:column;
+    transition:box-shadow .12s;
+  }
+  .card:hover{box-shadow:0 12px 28px rgba(36,33,28,0.14);}
+  .card-id{
+    position:absolute;top:6px;left:6px;
+    font-family:'JetBrains Mono',monospace;
+    background:rgba(36,33,28,0.78);color:var(--paper);
+    font-size:10px;padding:2px 6px;border-radius:4px;
+    letter-spacing:0.04em;z-index:2;
+  }
+  .card-status{
+    position:absolute;top:6px;right:6px;z-index:2;
+    font-size:9.5px;font-weight:700;letter-spacing:0.05em;
+    padding:2px 7px;border-radius:20px;
+    font-family:'Noto Sans TC',sans-serif;
+  }
+  .st-pending{background:#E5DFCF;color:var(--ink-soft);}
+  .st-analyzing{background:#FCE9CB;color:var(--amber-deep);}
+  .st-done{background:#DCEAE6;color:var(--teal);}
+  .st-error{background:#F4D9D3;color:var(--rust);}
+  .card-thumb{
+    width:100%;aspect-ratio:4/3;object-fit:cover;
+    background:var(--paper-deep);
+    display:block;cursor:pointer;
+  }
+  .card-body{padding:8px 9px 9px;flex:1;display:flex;flex-direction:column;gap:6px;}
+  .card-tags{display:flex;flex-wrap:wrap;gap:4px;min-height:20px;align-items:center;}
+  .tag{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;font-weight:700;
+    padding:2px 6px 2px 7px;border-radius:3px;
+    border:1.5px dashed currentColor;
+    letter-spacing:0.01em;
+    display:inline-flex;align-items:center;gap:4px;
+  }
+  .tag .tag-x{
+    cursor:pointer;font-family:'Noto Sans TC',sans-serif;font-weight:700;
+    opacity:0.6;line-height:1;padding-left:1px;
+  }
+  .tag .tag-x:hover{opacity:1;}
+  .tag-water{color:var(--teal);}
+  .tag-ground{color:var(--rust);}
+  .tag-fire{color:var(--amber-deep);}
+  .tag-other{color:var(--ink-soft);}
+  .tag-add-btn{
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+    color:var(--ink-soft);border:1.5px dashed var(--line);border-radius:3px;
+    padding:2px 7px;cursor:pointer;background:none;
+  }
+  .tag-add-btn:hover{border-color:var(--ink);color:var(--ink);}
+  .tag-add-panel{
+    display:none;flex-direction:column;gap:6px;
+    background:var(--paper);border:1px solid var(--line-soft);border-radius:6px;
+    padding:8px;margin-top:2px;
+  }
+  .tag-add-panel.show{display:flex;}
+  .tag-add-panel select, .tag-add-panel input{
+    width:100%;border:1px solid var(--line);border-radius:5px;padding:5px 7px;
+    font-family:'Noto Sans TC',sans-serif;font-size:11px;background:var(--white);color:var(--ink);
+  }
+  .card-desc{font-size:11px;color:var(--ink-soft);line-height:1.45;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .card-loc{font-size:10.5px;color:var(--amber-deep);font-weight:600;
+    display:flex;align-items:center;gap:3px;}
+  .card-foot{display:flex;gap:6px;margin-top:auto;padding-top:4px;}
+  .card-foot .btn{flex:1;text-align:center;padding:6px 8px;font-size:11px;}
+
+  .empty-state{
+    grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--ink-soft);
+    font-size:13.5px;
+  }
+
+  /* Prompt log bar (collapsible, top of photo column) */
+  .prompt-log-bar{
+    background:var(--white);border:1px solid var(--line-soft);border-radius:10px;
+    margin-bottom:12px;flex-shrink:0;overflow:hidden;
+  }
+  .prompt-log-bar-head{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:10px 14px;cursor:pointer;
+  }
+  .prompt-log-bar-title{font-weight:700;font-size:13px;white-space:nowrap;}
+  .prompt-log-bar-hint{font-size:11.5px;color:var(--ink-soft);flex:1;min-width:120px;}
+  .prompt-log-bar-body{
+    display:none;
+    padding:0 14px 14px;
+    max-height:52vh;
+    overflow-y:auto;
+  }
+  .prompt-log-bar.expanded .prompt-log-bar-body{display:block;}
+  .prompt-log-bar .prompt-log-panel{border:none;box-shadow:none;padding:0;}
+
+  .extraction-hint{font-size:11.5px;color:var(--ink-soft);}
+
+  /* Map */
+  .map-section{background:var(--white);border:1px solid var(--line-soft);border-radius:12px;box-shadow:var(--shadow);padding:20px 22px 16px;}
+  .map-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;}
+  .map-title{font-family:'Noto Serif TC',serif;font-weight:700;font-size:17px;}
+  .map-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-soft);}
+  .legend-dot{display:inline-flex;align-items:center;gap:5px;}
+  .legend-swatch{width:11px;height:11px;border-radius:50%;display:inline-block;}
+  .map-body{display:flex;gap:20px;flex-wrap:wrap;align-items:stretch;}
+  .map-svg-wrap{flex:1.3 1 340px;min-width:280px;background:var(--paper);border-radius:8px;border:1px solid var(--line-soft);padding:10px;display:flex;align-items:center;}
+  .map-svg-wrap svg{width:100%;height:auto;display:block;}
+  .county-shape{fill:var(--paper-deep);stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke;transition:fill .12s;}
+  .county-shape:hover{fill:#E1D8BF;}
+  .inset-box{fill:none;stroke:var(--line);stroke-width:1;stroke-dasharray:4 3;vector-effect:non-scaling-stroke;}
+  .inset-label{font-family:'JetBrains Mono',monospace;font-size:13px;fill:var(--ink-soft);}
+  .pin{cursor:pointer;}
+  .pin circle{stroke:var(--white);stroke-width:1.5;vector-effect:non-scaling-stroke;}
+  .pin.verified circle{fill:var(--rust);}
+  .pin.estimate circle{fill:var(--amber);opacity:0.75;}
+  .pin text{font-family:'JetBrains Mono',monospace;fill:#fff;font-weight:700;pointer-events:none;}
+  .pin:hover circle{stroke:var(--ink);}
+  .map-side-panel{flex:1 1 260px;min-width:240px;display:flex;flex-direction:column;}
+  .map-side-head{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-soft);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--line-soft);}
+  .map-side{display:flex;flex-direction:column;gap:8px;max-height:380px;overflow-y:auto;padding-right:2px;}
+  .map-side-empty{font-size:12.5px;color:var(--ink-soft);padding:24px 10px;text-align:center;line-height:1.6;}
+  .map-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;border:1px solid var(--line-soft);cursor:pointer;background:var(--paper);}
+  .map-row:hover{border-color:var(--amber);}
+  .map-row img{width:38px;height:38px;object-fit:cover;border-radius:5px;flex-shrink:0;}
+  .map-row-id{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-soft);}
+  .map-row-loc{font-size:12.5px;font-weight:600;}
+  .map-row-badge{margin-left:auto;font-size:10px;padding:2px 6px;border-radius:10px;font-weight:700;}
+  .badge-verified{background:#F4D9D3;color:var(--rust);}
+  .badge-estimate{background:#FBEAC7;color:var(--amber-deep);}
+  .map-offshore-note{font-size:11px;color:var(--ink-soft);margin-top:6px;}
+
+  /* Prompt log */
+  .prompt-log-panel{background:var(--white);border:1px solid var(--line-soft);border-radius:12px;box-shadow:var(--shadow);padding:18px 20px;}
+  .prompt-log-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;}
+  #promptLogEmpty{font-size:12.5px;color:var(--ink-soft);padding:6px 4px;}
+  .prompt-log-entry{border:1px solid var(--line-soft);border-radius:10px;padding:14px 16px;margin-bottom:12px;background:var(--paper);}
+  .prompt-log-entry.is-best{border-color:var(--amber);background:#FBF6EA;box-shadow:0 0 0 1px var(--amber) inset;}
+  .log-scope-filter{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft);margin-bottom:14px;padding-bottom:12px;border-bottom:1px dashed var(--line);}
+  .log-scope-filter label{display:flex;align-items:center;gap:5px;cursor:pointer;}
+  .log-run-item{border-top:1px dashed var(--line);padding-top:10px;margin-top:10px;}
+  .log-run-album{font-weight:700;font-size:12.5px;color:var(--ink);}
+  .log-entry-head{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px;}
+  .log-entry-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .log-version{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;color:var(--ink);}
+  .log-name-input{
+    font-family:'Noto Sans TC',sans-serif;font-weight:600;font-size:13px;
+    border:1.5px dashed var(--line);border-radius:6px;padding:5px 9px;
+    background:var(--white);color:var(--ink);min-width:160px;max-width:280px;
+  }
+  .log-name-input:focus{outline:2px solid var(--amber);outline-offset:1px;border-style:solid;}
+  .log-name-input::placeholder{color:var(--ink-soft);font-weight:400;}
+  .best-badge{font-size:11px;font-weight:700;color:var(--amber-deep);background:#FBEAC7;padding:2px 8px;border-radius:20px;}
+  .log-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-soft);}
+  .log-entry-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .log-action-btn.is-loaded{background:#DCEAE6;border-color:var(--teal);color:var(--teal);}
+  .log-action-btn.is-best{background:#FBEAC7;border-color:var(--amber);color:var(--amber-deep);}
+  .log-rating{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-soft);margin-bottom:6px;flex-wrap:wrap;}
+  .rate-btn{border:1.5px solid var(--line);background:var(--white);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;}
+  .rate-btn.active-good{background:#DCEAE6;border-color:var(--teal);color:var(--teal);}
+  .rate-btn.active-bad{background:#F4D9D3;border-color:var(--rust);color:var(--rust);}
+  .log-rating-note-label{display:block;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:4px;}
+  .log-rating-note{
+    width:100%;min-height:52px;border:1.5px solid var(--line);border-radius:6px;
+    padding:8px 10px;font-family:'Noto Sans TC',sans-serif;font-size:12.5px;line-height:1.55;
+    background:var(--white);color:var(--ink);resize:vertical;margin-bottom:10px;
+  }
+  .log-rating-note:focus{outline:2px solid var(--amber);outline-offset:1px;}
+  .log-samples{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
+  .log-json-view{
+    background:var(--ink);color:#E8E2D0;font-family:'JetBrains Mono',monospace;
+    font-size:11px;line-height:1.6;padding:12px 14px;border-radius:8px;
+    max-height:320px;overflow:auto;margin-bottom:10px;white-space:pre-wrap;word-break:break-word;
+  }
+  .log-sample-row{display:flex;align-items:flex-start;gap:10px;font-size:12px;padding:6px 8px;background:var(--white);border-radius:6px;border:1px solid var(--line-soft);flex-wrap:wrap;}
+  .log-sample-id{font-family:'JetBrains Mono',monospace;color:var(--ink-soft);flex-shrink:0;}
+  .log-sample-tags{display:flex;gap:4px;flex-wrap:wrap;flex-shrink:0;}
+  .log-sample-desc{color:var(--ink-soft);flex:1;min-width:120px;}
+
+  .footer-note{max-width:1180px;margin:20px auto 32px;padding:0 24px;font-size:11.5px;color:var(--ink-soft);text-align:center;line-height:1.7;}
+
+  /* Modal */
+  .overlay{position:fixed;inset:0;background:rgba(20,18,14,0.55);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
+  .overlay.show{display:flex;}
+  .modal{background:var(--white);max-width:1080px;width:100%;max-height:92vh;border-radius:14px;overflow:hidden;display:flex;box-shadow:0 20px 60px rgba(0,0,0,0.35);}
+  @media (max-width:820px){.modal{flex-direction:column;overflow-y:auto;}}
+  .modal-img-side{flex:1.15;background:#111;display:flex;align-items:center;justify-content:center;position:relative;min-width:0;}
+  .modal-img-side img{width:100%;height:100%;object-fit:contain;max-height:92vh;}
+  .modal-info-side{flex:1;min-width:340px;max-width:420px;padding:26px 26px 22px;display:flex;flex-direction:column;overflow-y:auto;}
+  .modal-close{position:absolute;top:14px;right:14px;z-index:5;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.9);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;}
+  .modal-info-title{font-family:'Noto Serif TC',serif;font-weight:700;font-size:20px;border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:16px;}
+  .field{margin-bottom:14px;}
+  .field-group{border:1px solid var(--line-soft);border-radius:8px;padding:14px 14px 2px;margin-bottom:16px;background:var(--paper);}
+  .field-group .field:last-child{margin-bottom:12px;}
+  .field-group-title{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--amber-deep);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;font-weight:700;}
+  .field label{display:block;font-size:11.5px;font-weight:700;color:var(--ink-soft);letter-spacing:0.06em;margin-bottom:5px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;}
+  .field input, .field textarea, .field select{width:100%;border:1.5px solid var(--line);border-radius:6px;padding:9px 10px;font-family:'Noto Sans TC',sans-serif;font-size:13.5px;background:var(--paper);color:var(--ink);resize:vertical;}
+  .field textarea{min-height:64px;line-height:1.5;}
+  .field input:focus, .field textarea:focus, .field select:focus{outline:2px solid var(--amber);outline-offset:1px;}
+  .field-hint{font-size:11px;color:var(--ink-soft);margin-top:4px;}
+  .tag-picker{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .tag-choice{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;padding:5px 9px;border-radius:5px;border:1.5px solid var(--line);cursor:pointer;background:var(--paper);color:var(--ink-soft);user-select:none;}
+  .tag-choice.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  .modal-actions{display:flex;gap:10px;margin-top:auto;padding-top:16px;}
+  .ai-note{font-size:11px;color:var(--amber-deep);background:#FBF0DD;border-radius:6px;padding:8px 10px;margin-bottom:14px;line-height:1.5;}
+
+  .prompt-view-modal{
+    background:var(--white);max-width:640px;width:100%;max-height:82vh;
+    border-radius:14px;padding:26px 26px 22px;position:relative;
+    overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.35);
+  }
+  .prompt-view-title{
+    font-family:'Noto Serif TC',serif;font-weight:700;font-size:18px;
+    border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:14px;
+    padding-right:32px;
+  }
+  .prompt-view-text{
+    font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;
+    white-space:pre-wrap;word-break:break-word;
+    background:var(--paper);border:1px solid var(--line-soft);border-radius:8px;
+    padding:14px 16px;margin:0 0 16px;color:var(--ink);
+  }
+  .album-create-modal{
+    background:var(--white);max-width:520px;width:100%;max-height:82vh;
+    border-radius:14px;padding:26px 26px 22px;position:relative;
+    overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.35);
+  }
+  .album-create-title{
+    font-family:'Noto Serif TC',serif;font-weight:700;font-size:18px;
+    border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:14px;
+    padding-right:32px;
+  }
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 20px;border-radius:8px;font-size:13px;z-index:200;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;box-shadow:0 8px 20px rgba(0,0,0,0.3);}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+
+  /* ---------- Responsive ---------- */
+  @media (max-width:900px){
+    .shell{height:auto;overflow:visible;}
+    .workspace{flex-direction:column;overflow:visible;}
+    .prompt-col{width:100%;max-width:none;border-right:none;border-bottom:1px solid var(--line-soft);overflow-y:visible;}
+    .photo-col{overflow:visible;}
+    .grid-wrap{overflow-y:visible;max-height:none;}
+    .prompt-textarea{min-height:140px;}
+  }
+  @media (max-width:600px){
+    .topbar-title{font-size:18px;}
+    .stamp{display:none;}
+    .photo-toolbar{flex-direction:column;align-items:stretch;}
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <header class="topbar">
+    <div>
+      <div class="topbar-title">災害圖資 AI 辨識工具</div>
+      <div class="topbar-sub">DISASTER FIELD PHOTO · PROMPT WORKBENCH</div>
+    </div>
+    <div class="stamp">現場調查<br><b id="todayStamp">--</b></div>
+  </header>
+
+  <div class="workspace" id="workspace">
+    <aside class="prompt-col">
+      <div class="prompt-col-label"><span class="step">PROMPT</span> 辨識指令</div>
+      <div class="prompt-intro">上傳右側照片後，調整下面的 Prompt、幫它取個名字，按「執行」由後端呼叫 Gemini 進行辨識。每次執行都會存成一筆測試紀錄（在下方頁面可評分並寫下原因、標記最佳版本、匯出給開發團隊）。</div>
+
+      <div class="gemini-config-box">
+        <div class="gemini-config-row">
+          <select id="geminiModelSelect">
+            <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+          </select>
+        </div>
+        <div class="gemini-note">Gemini API Key 由後端環境變數管理，不會暴露在瀏覽器中。</div>
+      </div>
+
+      <div class="prompt-col-head">
+        <span class="prompt-version-badge is-unsaved" id="promptActiveBadge">尚未儲存為 Prompt Run</span>
+        <button class="btn btn-outline btn-sm" id="resetPromptBtn">還原預設</button>
+      </div>
+
+      <div class="prompt-select-row">
+        <label for="promptLibrarySelect">選用已存 Prompt</label>
+        <select id="promptLibrarySelect">
+          <option value="">新的 Prompt Run（尚未儲存）</option>
+        </select>
+      </div>
+      <div class="prompt-select-row">
+        <label for="promptNameInput">Prompt 名稱</label>
+        <input type="text" id="promptNameInput" placeholder="例如：加強路名辨識版">
+      </div>
+
+      <textarea id="promptTextarea" class="prompt-textarea" spellcheck="false">你是災害現場圖資判讀助手，請仔細觀察這張現場照片。
+
+步驟：
+1. 觀察畫面中的地標、招牌文字、路牌、橋梁名稱、建築特徵、山川地形等線索，判斷是否有可見的災害跡象（例如：淹水、崩塌、地震損害、土石流、海岸災害、風災、火災、橋梁毀損、道路中斷、建物倒塌等）。
+2. 不需要判斷或推測地點、座標。但如果畫面中出現清楚可辨識的路名、橋梁名稱、招牌或店家名稱等文字，請把這些文字內容當作額外標籤加入 tags（例如：「台三線」、「中山橋」、「全聯福利中心」），不需要判斷它們是否屬於下方的可選標籤清單。
+
+請「只」回傳以下 JSON 格式，不要有任何其他文字、不要加 markdown code fence：
+{"tags": ["從清單中選擇一個以上，若都不符合就用「其他」並自訂簡短標籤；若畫面中有可辨識的路名／橋名／招牌文字，也一併加入這裡"], "description": "20到40字繁體中文簡短描述畫面內容與可能的災害狀況", "confidence": "low、medium 或 high 其中之一"}
+
+可選標籤清單：淹水、崩塌、地震、土石流、海岸災害、風災、火災、橋梁毀損、道路中斷、建物倒塌、其他</textarea>
+
+      <div class="run-scope-box">
+        <div class="run-scope-label">套用到相簿（可複選，目前相簿一定會執行）</div>
+        <div class="run-scope-list" id="runScopeList"></div>
+      </div>
+
+      <div class="prompt-run-row">
+        <button class="btn btn-amber btn-lg" id="runPromptBtn" disabled>用這個 Prompt 辨識全部照片</button>
+        <button class="btn btn-outline btn-sm" id="cancelPromptBtn" disabled>取消辨識</button>
+        <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+        <div class="toolbar-msg" id="toolbarMsg">尚未開始</div>
+      </div>
+    </aside>
+
+    <section class="photo-col">
+      <div class="project-bar">
+        <div class="project-bar-row">
+          <span class="project-bar-label">相簿</span>
+          <select id="albumSelect"></select>
+          <button class="btn btn-outline btn-sm" id="newAlbumBtn">新增相簿</button>
+          <button class="btn btn-outline btn-sm" id="renameAlbumBtn">重新命名</button>
+          <button class="btn btn-outline btn-sm" id="deleteAlbumBtn">刪除相簿</button>
+        </div>
+        <div class="project-bar-row">
+          <span class="project-bar-hint" id="albumSelectMeta">載入相簿中…</span>
+        </div>
+      </div>
+
+      <div class="prompt-log-bar" id="promptLogBar">
+        <div class="prompt-log-bar-head" id="promptLogBarHead">
+          <span class="prompt-log-bar-title">📋 Prompt 測試紀錄</span>
+          <span class="prompt-log-bar-hint" id="promptLogBarHint">目前還沒有測試紀錄</span>
+          <button class="btn btn-outline btn-sm" id="promptLogToggleBtn">展開</button>
+        </div>
+        <div class="prompt-log-bar-body" id="promptLogBarBody">
+          <div class="prompt-log-panel">
+            <div class="prompt-log-head">
+              <div style="font-size:12.5px;color:var(--ink-soft);">每次執行辨識都會存成一筆紀錄，可自訂名稱、評分並寫下好／不好的原因、標記最佳版本，最後匯出給開發團隊決定要寫進正式系統的 Prompt。</div>
+              <button class="btn btn-outline btn-sm" id="exportPromptLogBtn" disabled>匯出 Prompt 測試紀錄 (JSON)</button>
+            </div>
+            <div class="log-scope-filter">
+              <label><input type="radio" name="logScope" value="album" checked> 只看目前相簿</label>
+              <label><input type="radio" name="logScope" value="all"> 全部相簿（比較同一份 Prompt 在不同相簿的結果）</label>
+            </div>
+            <div id="promptLogEmpty">目前還沒有測試紀錄，執行一次辨識後會自動記錄在這裡。</div>
+            <div id="promptLogList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="photo-toolbar">
+        <div class="tray-mini" id="tray">
+          <div class="tray-mini-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div class="tray-mini-text" id="trayHint"><b>拖曳照片到這裡</b>，或點擊選擇檔案・最多 50 張・單張上限 5MB</div>
+        </div>
+        <div class="photo-toolbar-actions">
+          <span class="counter-inline" id="counter">0 / 50 張</span>
+          <button class="btn btn-outline btn-sm" id="pickBtn">選擇照片</button>
+          <button class="btn btn-outline btn-sm" id="clearBtn">清除全部</button>
+          <button class="btn btn-outline btn-sm" id="exportCsvBtn" disabled>匯出 CSV</button>
+          <button class="btn btn-outline btn-sm" id="downloadAllBtn" disabled>全部下載</button>
+        </div>
+        <input type="file" id="fileInput" multiple accept="image/*">
+      </div>
+
+      <div class="view-tabs">
+        <button class="view-tab active" data-view="grid" id="tabGrid">📷 照片列表</button>
+        <button class="view-tab" data-view="map" id="tabMap">🗺️ 圖資地圖</button>
+      </div>
+
+      <div class="grid-wrap" id="gridView">
+        <div class="grid" id="grid">
+          <div class="empty-state" id="emptyState">尚未上傳照片 — 拖曳或點擊上方按鈕開始建立災害圖資。</div>
+        </div>
+      </div>
+
+      <div class="map-in-col" id="mapView">
+        <div class="map-head">
+          <div class="map-legend">
+            <span class="legend-dot"><span class="legend-swatch" style="background:var(--rust)"></span>已核實座標（手動輸入）</span>
+            <span class="legend-dot"><span class="legend-swatch" style="background:var(--amber);opacity:.75"></span>AI 推測（未核實）</span>
+          </div>
+        </div>
+        <div class="map-body">
+          <div class="map-svg-wrap">
+            <svg id="twMap" viewBox="0 0 1000 1379.7" xmlns="http://www.w3.org/2000/svg"></svg>
+          </div>
+          <div class="map-side-panel">
+            <div class="map-side-head">已標記地點</div>
+            <div class="map-side" id="mapSide">
+              <div class="map-side-empty">尚無定位資料 — 辨識完成且含地點的照片會列在這裡。</div>
+            </div>
+          </div>
+        </div>
+        <div class="map-offshore-note" id="offshoreNote"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="footer-note">AI 辨識結果（標籤／描述／地點推測）僅供初步參考，正式圖資請人工核實後再行採用。</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div class="modal-img-side"><img id="modalImg" src="" alt=""></div>
+    <div class="modal-info-side" id="modalInfo"></div>
+  </div>
+</div>
+
+<div class="overlay" id="promptViewOverlay">
+  <div class="prompt-view-modal">
+    <button class="modal-close" id="promptViewClose">✕</button>
+    <div class="prompt-view-title" id="promptViewTitle">Prompt 內容</div>
+    <pre class="prompt-view-text" id="promptViewText"></pre>
+    <div class="modal-actions">
+      <button class="btn btn-amber btn-sm" id="promptViewLoadBtn">載入到左側編輯框</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="albumCreateOverlay">
+  <div class="album-create-modal">
+    <button class="modal-close" id="albumCreateClose">✕</button>
+    <div class="album-create-title">新增相簿</div>
+    <div class="field">
+      <label for="albumCreateName">相簿名稱</label>
+      <input type="text" id="albumCreateName" placeholder="例如：2026-08-24 嘉義東石現場">
+    </div>
+    <div class="field">
+      <label for="albumCreateDescription">描述（選填）</label>
+      <textarea id="albumCreateDescription" placeholder="可補充這批照片的來源、事件或測試目的"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" id="albumCreateCancel">取消</button>
+      <button class="btn btn-amber btn-sm" id="albumCreateSubmit">建立相簿</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>const TW_MAP_DATA={"W":1000,"H":1379.6837999978245,"bbox":{"minlon":119.2065695610571,"minlat":21.76042608816759,"maxlon":122.11480164587142,"maxlat":25.43730894500066},"main_paths":[{"name":"台東縣","d":"M823.3,1283.0 L823.4,1283.2 L823.3,1283.2 L823.3,1283.0 Z M823.3,1307.4 L823.6,1307.3 L823.5,1307.5 L823.3,1307.4 Z M828.0,1308.4 L828.1,1308.4 L828.1,1308.5 L828.0,1308.4 Z M826.0,1310.7 L824.1,1307.8 L827.7,1307.0 L828.0,1310.0 L826.0,1310.7 Z M760.7,830.2 L760.8,830.2 L760.8,830.2 L760.7,830.2 Z M760.5,830.5 L760.5,830.4 L760.5,830.5 L760.5,830.5 Z M760.3,830.7 L760.4,830.7 L760.3,830.7 L760.3,830.7 Z M760.1,830.8 L760.3,830.7 L760.2,830.8 L760.1,830.8 Z M759.5,831.8 L759.5,831.8 L759.5,831.8 L759.5,831.8 Z M759.4,832.3 L759.6,832.2 L759.5,832.3 L759.4,832.3 Z M759.0,832.9 L759.1,833.0 L759.0,832.9 L759.0,832.9 Z M758.6,833.4 L758.6,833.4 L758.6,833.4 L758.6,833.4 Z M758.3,833.5 L758.4,833.4 L758.3,833.5 L758.3,833.5 Z M757.8,834.0 L757.8,834.0 L757.9,834.0 L757.8,834.0 Z M757.7,834.2 L757.8,834.2 L757.7,834.2 L757.7,834.2 Z M756.4,846.2 L756.6,846.1 L756.4,846.3 L756.4,846.2 Z M756.0,847.0 L756.1,847.0 L756.0,847.1 L756.0,847.0 Z M755.7,847.5 L755.7,847.6 L755.6,847.7 L755.7,847.5 Z M760.5,866.7 L760.2,866.7 L760.2,866.6 L760.5,866.7 Z M760.4,867.0 L760.5,867.0 L760.4,867.0 L760.4,867.0 Z M763.0,867.2 L763.1,867.3 L763.1,867.3 L763.0,867.2 Z M757.6,867.7 L757.6,867.9 L757.5,867.9 L757.6,867.7 Z M760.8,868.4 L760.9,868.4 L760.7,868.5 L760.8,868.4 Z M759.5,868.6 L759.5,868.6 L759.5,868.6 L759.5,868.6 Z M759.9,868.6 L760.1,868.5 L760.0,868.9 L759.9,868.6 Z M753.9,871.4 L754.0,871.4 L753.9,871.4 L753.9,871.4 Z M752.4,871.7 L752.5,871.7 L752.4,871.8 L752.4,871.7 Z M754.6,872.0 L754.7,872.0 L754.7,872.0 L754.6,872.0 Z M752.0,872.8 L752.1,872.8 L752.1,872.8 L752.0,872.8 Z M752.2,872.8 L752.2,872.8 L752.2,872.9 L752.2,872.8 Z M751.9,873.3 L752.0,873.2 L751.9,873.4 L751.9,873.3 Z M751.3,874.0 L751.5,874.0 L751.3,874.1 L751.3,874.0 Z M750.9,874.2 L751.0,874.1 L750.9,874.4 L750.9,874.2 Z M751.0,874.4 L751.1,874.4 L751.1,874.4 L751.0,874.4 Z M750.6,874.7 L750.6,874.7 L750.6,874.7 L750.6,874.7 Z M750.2,875.6 L750.3,875.6 L750.2,875.7 L750.2,875.6 Z M749.7,876.2 L749.7,876.2 L749.7,876.2 L749.7,876.2 Z M749.5,876.4 L749.8,876.7 L749.2,877.0 L749.5,876.4 Z M749.0,877.3 L749.5,877.7 L749.1,878.0 L749.0,877.3 Z M748.6,878.1 L748.8,878.2 L748.7,878.3 L748.6,878.1 Z M748.6,878.5 L748.8,878.4 L748.8,878.5 L748.6,878.5 Z M748.5,878.6 L748.6,878.6 L748.6,878.6 L748.5,878.6 Z M748.4,879.6 L748.8,879.4 L748.7,879.8 L748.4,879.6 Z M748.7,880.1 L748.9,880.1 L748.7,880.1 L748.7,880.1 Z M739.9,882.4 L740.2,882.2 L740.2,882.2 L739.9,882.4 Z M739.8,883.6 L740.1,883.5 L739.8,884.1 L739.8,883.6 Z M710.4,944.4 L711.0,943.7 L710.2,944.9 L710.4,944.4 Z M707.1,949.4 L706.3,952.5 L705.5,953.1 L705.8,952.7 L706.1,950.9 L707.1,949.4 Z M681.1,977.7 L681.2,977.7 L681.1,977.7 L681.1,977.7 Z M681.2,978.0 L681.3,978.0 L681.3,978.1 L681.2,978.0 Z M682.7,979.1 L683.3,978.8 L683.4,978.9 L682.7,979.1 Z M684.6,979.5 L684.7,979.4 L684.8,979.4 L684.6,979.5 Z M683.1,979.5 L684.4,980.2 L682.6,979.7 L683.1,979.5 Z M796.1,1032.8 L795.6,1032.4 L796.2,1032.6 L796.1,1032.8 Z M792.6,1033.6 L792.1,1034.3 L792.1,1033.8 L792.6,1033.6 Z M793.3,1034.3 L793.0,1034.5 L793.1,1034.3 L793.3,1034.3 Z M785.2,1034.7 L785.6,1034.6 L785.6,1034.7 L785.2,1034.7 Z M792.8,1034.5 L792.5,1034.6 L792.6,1034.5 L792.8,1034.5 Z M792.5,1034.6 L792.2,1034.8 L792.3,1034.5 L792.5,1034.6 Z M792.5,1038.5 L792.6,1038.6 L792.5,1038.6 L792.5,1038.5 Z M793.2,1039.6 L793.1,1039.5 L793.1,1039.4 L793.2,1039.6 Z M792.5,1040.2 L792.7,1040.2 L792.6,1040.4 L792.5,1040.2 Z M793.0,1040.6 L792.6,1040.9 L792.7,1040.6 L793.0,1040.6 Z M791.1,1042.7 L791.5,1042.4 L791.5,1042.5 L791.1,1042.7 Z M788.8,1047.2 L791.8,1052.0 L787.2,1052.3 L784.6,1048.9 L779.3,1047.3 L780.3,1042.5 L776.3,1038.3 L776.3,1035.2 L779.2,1036.3 L779.6,1035.8 L781.5,1036.1 L785.7,1034.7 L786.3,1036.3 L791.8,1035.0 L792.3,1038.8 L793.0,1039.6 L792.1,1040.4 L791.0,1042.5 L791.3,1044.3 L788.8,1047.2 Z M792.3,1044.3 L791.4,1043.8 L792.3,1043.4 L792.3,1044.3 Z M791.2,1045.9 L791.1,1046.0 L791.0,1045.9 L791.2,1045.9 Z M790.2,1048.9 L790.2,1049.0 L790.1,1049.0 L790.2,1048.9 Z M791.3,1052.4 L791.5,1052.4 L791.4,1052.5 L791.3,1052.4 Z M770.4,748.1 L776.0,749.9 L779.4,749.2 L782.6,753.2 L787.2,751.5 L779.8,769.3 L778.8,782.2 L775.8,796.5 L770.5,798.2 L764.6,807.2 L763.5,814.3 L761.8,816.1 L759.0,827.0 L758.9,828.5 L760.7,828.9 L761.1,829.8 L760.8,829.7 L760.0,830.8 L760.0,831.4 L759.9,831.4 L759.0,832.2 L757.5,834.1 L757.7,834.4 L755.2,834.9 L752.9,837.9 L753.4,844.7 L756.7,852.4 L754.0,858.7 L754.5,865.4 L757.9,868.3 L762.7,867.2 L758.0,868.8 L755.1,871.8 L753.0,870.6 L749.8,874.9 L750.0,875.4 L749.0,877.1 L748.4,878.8 L747.4,877.3 L746.5,877.6 L747.2,877.6 L747.4,878.4 L741.5,879.5 L738.7,884.5 L739.3,886.8 L736.4,889.0 L732.4,907.1 L729.4,909.0 L725.6,921.2 L718.2,931.6 L716.5,931.4 L714.2,933.7 L712.5,940.5 L706.4,950.1 L702.9,957.4 L698.9,960.1 L697.1,965.2 L694.3,964.1 L688.3,965.2 L681.9,971.3 L680.7,977.3 L684.8,984.1 L685.8,991.2 L679.7,994.4 L676.5,1005.9 L670.6,1009.3 L659.5,1020.7 L643.9,1028.3 L637.6,1034.6 L628.9,1039.3 L625.5,1043.8 L621.1,1056.9 L619.8,1068.8 L611.8,1076.0 L608.8,1081.9 L598.3,1118.2 L587.4,1145.4 L585.3,1155.0 L580.6,1164.1 L579.4,1183.6 L581.0,1197.3 L576.9,1199.5 L575.6,1201.8 L570.7,1203.6 L569.3,1203.2 L570.0,1201.9 L568.1,1199.4 L559.8,1197.7 L553.2,1191.0 L547.6,1193.3 L546.6,1188.5 L547.2,1186.1 L550.2,1185.8 L549.8,1183.2 L545.5,1182.5 L544.4,1179.7 L540.5,1178.3 L540.0,1176.2 L540.4,1174.0 L543.5,1173.8 L546.8,1170.7 L545.4,1163.9 L542.7,1160.1 L539.4,1158.7 L536.7,1159.3 L535.2,1155.0 L531.7,1154.6 L528.5,1151.9 L530.3,1149.8 L530.9,1145.7 L533.0,1144.1 L531.5,1142.5 L533.3,1140.4 L531.9,1137.8 L541.0,1136.2 L544.3,1133.0 L539.3,1123.4 L539.7,1120.9 L531.1,1117.6 L532.3,1112.9 L531.0,1110.0 L533.3,1108.9 L535.6,1104.0 L531.9,1097.9 L530.7,1089.3 L527.0,1082.4 L527.2,1078.5 L527.9,1076.3 L530.3,1075.1 L529.3,1068.6 L532.3,1064.4 L532.5,1058.1 L543.0,1041.6 L543.2,1037.6 L545.0,1034.9 L543.3,1029.8 L551.0,1031.5 L551.9,1030.1 L554.5,1030.6 L554.9,1028.7 L560.6,1028.2 L564.6,1020.8 L566.8,1020.5 L568.0,1022.0 L569.1,1020.9 L576.5,1020.8 L580.6,1012.6 L580.8,1006.1 L579.5,1003.2 L583.6,998.7 L583.4,989.7 L579.2,985.2 L572.5,984.0 L569.1,979.7 L571.8,968.0 L568.3,965.9 L570.4,963.5 L568.5,960.3 L561.8,958.8 L557.8,950.7 L559.3,947.5 L555.4,938.9 L556.4,932.4 L555.1,928.9 L558.3,925.8 L559.1,921.9 L562.1,920.6 L562.3,917.9 L564.7,916.6 L565.5,912.6 L568.7,911.6 L569.2,902.9 L575.4,901.3 L575.3,896.7 L571.7,892.2 L577.3,881.2 L578.6,873.3 L577.1,869.8 L578.2,868.6 L577.4,860.4 L574.2,857.8 L580.6,854.3 L581.8,848.3 L586.1,846.2 L586.3,843.2 L584.3,839.7 L586.3,836.1 L586.3,829.1 L587.6,825.4 L591.3,822.8 L595.3,822.7 L607.1,808.8 L612.1,809.4 L620.1,804.8 L624.9,804.3 L630.0,801.7 L637.1,807.2 L638.1,814.8 L643.9,827.2 L648.6,826.8 L654.0,830.7 L661.1,830.8 L664.6,838.8 L667.1,839.8 L669.8,839.9 L672.0,837.3 L677.0,835.7 L681.8,838.1 L684.8,843.8 L685.2,848.8 L689.8,856.5 L689.6,860.4 L696.1,862.3 L698.7,866.3 L702.4,865.2 L705.3,867.3 L708.6,871.8 L707.6,875.6 L710.3,877.8 L716.9,873.5 L725.3,873.4 L727.4,870.6 L726.8,862.9 L729.2,857.4 L727.4,856.3 L726.2,851.5 L727.4,851.0 L727.8,847.5 L731.9,847.8 L736.0,836.0 L735.8,833.1 L739.5,830.6 L737.9,827.8 L740.8,822.9 L740.2,819.8 L746.6,813.4 L746.6,801.7 L750.0,798.0 L750.8,794.3 L754.2,793.3 L757.6,784.8 L761.8,781.3 L762.0,779.4 L755.7,776.7 L754.3,769.4 L757.8,764.9 L761.2,756.7 L765.7,752.2 L768.0,752.0 L770.4,748.1 Z M790.7,1256.8 L790.4,1256.8 L790.7,1256.7 L790.7,1256.8 Z M812.8,1257.5 L812.8,1257.7 L812.7,1257.6 L812.8,1257.5 Z M797.5,1258.5 L797.4,1258.5 L797.5,1258.4 L797.5,1258.5 Z M794.8,1258.9 L794.7,1259.0 L794.7,1258.9 L794.8,1258.9 Z M792.3,1258.9 L792.7,1259.1 L792.7,1259.2 L792.3,1258.9 Z M817.1,1259.7 L815.1,1260.3 L815.4,1259.3 L817.1,1259.7 Z M812.5,1263.8 L812.6,1263.9 L812.6,1263.9 L812.5,1263.8 Z M812.6,1264.3 L812.7,1264.3 L812.6,1264.3 L812.6,1264.3 Z M812.0,1268.1 L812.0,1268.1 L812.0,1268.2 L812.0,1268.1 Z M811.5,1268.6 L812.0,1268.5 L811.9,1268.8 L811.5,1268.6 Z M791.1,1270.5 L791.4,1270.6 L791.2,1270.7 L791.1,1270.5 Z M791.8,1263.8 L788.4,1259.5 L790.4,1257.5 L792.9,1259.4 L797.5,1258.8 L799.1,1260.2 L804.1,1258.6 L809.2,1259.5 L812.2,1257.3 L813.1,1259.6 L812.3,1264.7 L814.8,1267.1 L811.4,1267.9 L810.7,1271.0 L811.7,1274.5 L822.9,1281.2 L820.9,1288.5 L812.8,1288.8 L808.3,1281.2 L805.3,1279.9 L804.0,1279.9 L802.2,1280.7 L801.0,1280.4 L793.8,1272.3 L791.6,1272.6 L792.5,1270.6 L791.1,1268.1 L791.8,1263.8 Z M804.0,1280.0 L804.0,1280.0 L804.0,1280.0 L804.0,1280.0 Z M803.7,1280.4 L803.8,1280.3 L803.7,1280.4 L803.7,1280.4 Z M801.7,1280.9 L802.1,1281.0 L801.9,1281.0 L801.7,1280.9 Z M823.3,1282.2 L823.4,1282.6 L823.4,1282.6 L823.3,1282.2 Z M682.6,974.7 L682.7,974.8 L682.6,974.8 L682.6,974.7 Z"},{"name":"宜蘭縣","d":"M917.1,338.6 L917.9,338.6 L918.1,339.1 L917.1,338.6 Z M917.0,338.9 L917.2,339.0 L917.0,338.9 L917.0,338.9 Z M912.8,341.5 L912.9,341.6 L912.9,341.6 L912.8,341.5 Z M948.6,170.6 L948.7,170.6 L948.6,170.7 L948.6,170.6 Z M948.5,170.8 L948.5,170.7 L948.5,170.7 L948.5,170.8 Z M948.4,170.9 L948.5,170.8 L948.4,170.9 L948.4,170.9 Z M940.4,174.2 L940.5,174.2 L940.5,174.2 L940.4,174.2 Z M933.7,178.9 L933.8,178.9 L933.8,178.9 L933.7,178.9 Z M932.9,180.9 L933.1,180.9 L933.0,181.0 L932.9,180.9 Z M932.6,181.5 L932.7,181.5 L932.6,181.6 L932.6,181.5 Z M931.0,182.4 L931.1,182.3 L931.1,182.4 L931.0,182.4 Z M930.9,182.4 L930.9,182.4 L930.9,182.4 L930.9,182.4 Z M929.6,183.4 L929.6,183.4 L929.6,183.4 L929.6,183.4 Z M929.1,183.4 L929.1,183.5 L929.0,183.5 L929.1,183.4 Z M928.4,184.0 L928.4,184.1 L928.4,184.1 L928.4,184.0 Z M927.7,184.7 L927.9,184.7 L927.9,184.8 L927.7,184.7 Z M927.6,185.6 L927.8,185.7 L927.7,185.9 L927.6,185.6 Z M927.7,186.1 L927.9,186.2 L927.6,186.2 L927.7,186.1 Z M927.6,186.6 L927.8,186.5 L927.8,186.6 L927.6,186.6 Z M924.0,187.1 L924.3,187.3 L923.8,187.3 L924.0,187.1 Z M921.1,193.8 L921.2,193.8 L921.1,193.9 L921.1,193.8 Z M921.1,194.3 L921.1,194.3 L921.1,194.4 L921.1,194.3 Z M921.1,194.7 L921.1,194.7 L921.0,194.7 L921.1,194.7 Z M921.0,194.9 L921.1,194.9 L921.0,195.0 L921.0,194.9 Z M920.8,195.1 L920.9,195.3 L920.8,195.3 L920.8,195.1 Z M920.4,195.4 L920.5,195.4 L920.4,195.4 L920.4,195.4 Z M920.3,195.6 L920.3,195.6 L920.3,195.6 L920.3,195.6 Z M920.2,195.8 L920.3,195.8 L920.2,195.8 L920.2,195.8 Z M920.2,196.0 L920.2,196.0 L920.2,196.0 L920.2,196.0 Z M918.9,196.9 L918.9,196.9 L918.9,196.9 L918.9,196.9 Z M917.6,198.2 L917.7,198.2 L917.6,198.2 L917.6,198.2 Z M917.6,198.3 L917.6,198.4 L917.6,198.4 L917.6,198.3 Z M911.5,204.3 L911.7,204.3 L911.5,204.3 L911.5,204.3 Z M911.0,204.4 L911.1,204.4 L911.0,204.6 L911.0,204.4 Z M910.7,204.6 L910.7,204.6 L910.7,204.6 L910.7,204.6 Z M910.5,204.9 L910.6,204.8 L910.6,204.9 L910.5,204.9 Z M910.3,204.9 L910.3,204.9 L910.3,204.9 L910.3,204.9 Z M910.1,205.0 L910.1,204.8 L910.1,205.0 L910.1,205.0 Z M908.9,206.9 L909.2,206.7 L909.4,206.7 L908.9,206.9 Z M908.7,206.9 L908.9,207.2 L908.6,207.3 L908.7,206.9 Z M908.4,207.4 L908.5,207.4 L908.4,207.4 L908.4,207.4 Z M908.6,207.4 L908.6,207.5 L908.6,207.5 L908.6,207.4 Z M908.9,207.5 L908.9,207.6 L908.9,207.6 L908.9,207.5 Z M908.5,207.6 L908.5,207.6 L908.5,207.6 L908.5,207.6 Z M908.4,207.8 L908.6,207.9 L908.6,208.0 L908.4,207.8 Z M948.2,225.2 L941.6,225.3 L938.0,221.7 L941.1,222.9 L942.7,220.2 L945.2,220.5 L948.2,225.2 Z M948.3,224.4 L948.4,224.4 L948.3,224.4 L948.3,224.4 Z M948.3,224.9 L948.3,224.9 L948.3,224.9 L948.3,224.9 Z M948.3,225.2 L948.3,225.2 L948.3,225.2 L948.3,225.2 Z M919.5,312.1 L919.5,312.1 L919.4,312.1 L919.5,312.1 Z M919.8,312.4 L919.9,312.3 L919.9,312.3 L919.8,312.4 Z M922.5,312.4 L922.7,312.3 L922.8,312.5 L922.5,312.4 Z M921.7,312.9 L921.8,312.9 L921.8,312.9 L921.7,312.9 Z M927.0,314.4 L927.0,314.3 L927.1,314.4 L927.0,314.4 Z M915.8,325.6 L915.9,325.7 L915.8,325.6 L915.8,325.6 Z M917.4,334.5 L917.5,334.8 L917.4,334.8 L917.4,334.5 Z M917.2,335.3 L917.3,335.2 L917.3,335.3 L917.2,335.3 Z M907.3,297.4 L913.3,309.7 L921.2,312.9 L919.9,315.9 L919.6,314.6 L917.0,315.4 L919.1,313.7 L914.8,312.2 L911.8,313.9 L913.3,316.7 L915.2,315.3 L915.2,317.8 L914.4,317.0 L914.0,318.2 L915.4,319.2 L914.2,319.8 L915.7,320.3 L914.2,320.9 L915.8,321.0 L915.3,322.7 L916.4,321.4 L915.7,319.8 L915.7,318.7 L916.0,317.8 L917.5,319.4 L919.6,316.7 L918.3,319.5 L916.5,320.0 L918.9,321.9 L915.7,323.8 L916.2,332.0 L917.2,334.6 L916.6,336.1 L917.1,338.8 L915.7,340.6 L915.7,341.0 L913.1,341.0 L906.5,343.8 L905.5,345.4 L905.2,351.9 L909.2,353.4 L909.3,357.6 L913.0,359.0 L906.2,360.5 L899.0,365.8 L899.0,368.9 L891.5,377.4 L888.5,386.3 L887.4,399.2 L881.8,413.0 L882.3,421.7 L877.9,421.5 L872.7,418.2 L862.0,416.7 L855.7,413.7 L853.4,414.2 L852.4,411.5 L848.7,412.6 L848.4,410.5 L846.7,410.5 L844.7,406.9 L841.4,407.2 L840.4,404.3 L839.7,408.1 L835.0,401.8 L833.5,401.8 L833.6,400.3 L830.0,403.0 L832.2,408.2 L835.2,408.9 L833.7,410.2 L834.2,413.7 L832.8,414.1 L832.4,411.3 L830.8,411.9 L829.5,409.7 L829.0,414.1 L825.7,413.5 L824.4,415.9 L822.7,414.1 L821.5,414.9 L824.8,420.3 L825.0,423.2 L822.0,420.6 L819.4,421.6 L814.9,419.4 L811.5,419.6 L804.2,412.6 L800.0,412.8 L796.3,410.6 L787.0,411.6 L771.8,402.2 L770.4,398.4 L768.6,399.1 L766.9,395.4 L756.6,397.5 L754.2,396.7 L747.3,401.5 L743.4,399.5 L743.6,395.6 L741.8,393.2 L738.3,391.6 L733.0,393.0 L728.6,389.0 L729.3,377.0 L725.6,373.6 L726.4,371.4 L728.8,366.7 L732.2,363.9 L734.5,358.4 L739.6,356.8 L744.3,352.3 L745.1,348.0 L748.5,347.9 L751.0,343.1 L754.7,340.8 L752.4,330.8 L755.5,325.9 L758.5,324.2 L755.3,317.2 L758.6,312.8 L760.6,313.8 L763.7,312.0 L766.6,303.9 L771.9,295.1 L770.6,293.1 L771.2,291.0 L774.7,286.7 L786.4,286.7 L792.7,282.5 L796.8,282.9 L798.2,280.8 L801.2,281.0 L801.6,276.7 L803.5,274.5 L806.2,274.4 L810.2,271.8 L812.8,271.4 L814.4,272.8 L815.5,268.3 L818.6,269.1 L822.3,265.8 L820.8,265.5 L821.3,261.7 L820.1,259.9 L821.6,258.5 L819.2,256.0 L822.2,249.6 L820.2,243.8 L831.7,241.0 L831.9,235.8 L838.4,235.7 L839.3,233.9 L843.9,235.1 L846.7,232.4 L848.5,233.8 L853.3,233.1 L853.1,229.8 L856.0,227.9 L856.1,226.1 L862.3,223.5 L867.9,218.4 L873.1,219.3 L878.3,217.9 L880.9,214.5 L883.3,214.7 L884.0,212.6 L886.7,211.3 L885.5,205.6 L889.3,203.1 L889.0,201.7 L893.4,201.2 L895.7,199.2 L898.1,200.6 L902.7,199.8 L910.2,192.2 L905.2,184.8 L907.9,179.0 L922.2,177.9 L931.2,171.8 L937.7,171.3 L941.5,168.5 L947.7,168.7 L948.8,170.5 L945.7,170.6 L940.5,174.1 L935.2,175.6 L932.5,180.0 L932.7,181.3 L929.8,182.6 L927.7,184.3 L927.4,186.6 L925.5,186.0 L922.4,187.7 L921.2,189.9 L921.0,194.9 L918.9,196.6 L918.5,197.7 L917.7,198.0 L916.5,200.2 L914.4,200.5 L909.7,204.9 L905.4,211.9 L906.4,212.4 L906.0,214.2 L904.2,212.9 L903.0,215.3 L904.2,213.8 L905.7,214.6 L904.2,215.1 L900.5,226.5 L897.9,248.0 L899.4,260.5 L904.3,271.4 L904.8,286.3 L907.3,297.4 Z"},{"name":"台北市","d":"M808.9,85.2 L813.3,90.8 L817.4,91.1 L816.4,95.8 L817.3,97.7 L815.1,101.4 L819.5,102.7 L819.3,106.9 L824.9,112.8 L824.6,115.0 L825.7,115.2 L821.5,121.3 L822.1,123.0 L828.2,125.1 L832.0,128.1 L832.6,132.9 L828.5,140.1 L831.3,143.2 L830.0,142.8 L828.6,145.1 L829.6,147.8 L839.1,153.6 L845.7,152.9 L844.7,155.5 L838.9,156.0 L834.1,154.5 L831.0,157.6 L826.1,156.2 L822.1,158.6 L821.6,162.4 L823.1,163.7 L822.3,166.2 L823.7,167.7 L822.8,172.3 L829.9,175.6 L823.4,178.8 L815.6,176.6 L809.7,177.3 L806.7,169.1 L804.1,170.2 L803.8,168.5 L801.3,168.3 L800.7,165.9 L797.8,169.0 L799.7,161.2 L795.0,156.6 L791.8,156.0 L786.1,160.5 L784.5,158.3 L783.9,151.8 L789.7,146.0 L790.7,136.1 L788.5,131.4 L784.7,127.6 L777.0,125.9 L773.8,123.4 L775.2,120.5 L774.4,118.0 L776.5,117.5 L776.8,114.7 L784.3,107.3 L789.5,99.1 L795.5,100.6 L796.1,96.9 L802.7,93.8 L808.9,85.2 Z"},{"name":"雲林縣","d":"M317.6,701.1 L316.6,699.4 L318.3,697.3 L318.4,699.3 L317.6,701.1 Z M310.0,712.1 L308.5,710.4 L311.1,706.2 L314.6,705.9 L315.6,703.3 L318.5,702.8 L317.6,707.6 L315.9,704.9 L313.8,708.6 L310.5,710.0 L310.0,712.1 Z M318.2,715.6 L316.0,715.2 L317.2,712.6 L316.2,710.4 L317.7,708.9 L319.9,710.7 L316.7,714.6 L318.2,715.6 Z M306.3,718.9 L304.1,716.1 L306.7,711.2 L310.0,714.2 L308.3,715.1 L311.2,715.8 L307.2,715.9 L306.3,718.9 Z M291.3,729.9 L295.2,731.8 L294.3,734.3 L291.3,734.8 L292.9,733.4 L290.9,731.5 L289.7,735.7 L287.6,735.7 L288.5,731.4 L290.5,729.8 L289.1,728.8 L286.9,735.0 L284.8,733.3 L285.1,735.4 L283.1,734.6 L281.4,736.2 L281.0,742.1 L277.6,742.0 L279.0,738.4 L275.9,740.5 L275.4,741.6 L279.7,747.9 L279.8,751.1 L274.2,741.6 L271.8,739.9 L273.1,736.8 L300.6,717.1 L305.0,720.2 L305.8,723.0 L301.2,722.2 L301.2,723.8 L299.2,724.2 L299.5,726.2 L297.1,725.4 L295.8,726.7 L298.3,727.4 L295.7,727.5 L297.6,729.2 L296.3,730.6 L295.3,729.0 L291.3,729.9 Z M338.9,607.9 L339.0,607.8 L338.9,607.9 L338.9,607.9 Z M338.9,608.4 L339.4,608.2 L339.2,608.5 L338.9,608.4 Z M338.1,608.8 L338.4,608.6 L337.8,609.2 L338.1,608.8 Z M331.8,636.6 L332.1,635.3 L333.6,633.6 L333.0,635.6 L331.8,636.6 Z M332.6,636.9 L332.7,637.0 L332.6,637.2 L332.6,636.9 Z M331.2,638.8 L331.7,639.8 L329.7,640.4 L326.9,645.3 L328.7,640.8 L331.2,638.8 Z M495.7,658.4 L489.1,676.2 L489.7,681.1 L491.0,682.1 L494.7,677.7 L497.3,678.3 L496.9,683.3 L502.9,686.0 L507.9,685.4 L508.7,682.6 L510.5,681.9 L517.1,682.2 L518.4,681.5 L518.0,678.9 L519.9,678.2 L524.1,682.6 L524.1,685.4 L522.1,688.0 L524.7,690.5 L523.8,691.8 L525.9,700.5 L519.6,701.0 L517.1,700.3 L516.6,698.6 L511.3,698.3 L505.3,700.5 L503.2,697.5 L496.4,699.7 L494.1,698.4 L496.1,695.6 L495.8,691.9 L487.2,693.1 L485.6,695.4 L475.6,694.8 L472.4,696.1 L469.1,693.9 L464.7,693.5 L464.1,692.0 L456.1,690.6 L448.3,682.2 L446.0,676.2 L442.4,677.0 L440.9,675.9 L440.4,677.9 L437.5,677.1 L436.8,678.3 L429.0,679.5 L427.9,679.2 L428.6,677.9 L425.7,678.0 L422.5,679.8 L423.0,681.2 L419.0,682.7 L417.5,680.0 L415.8,681.4 L412.6,680.0 L411.9,676.6 L410.7,677.3 L411.3,679.3 L405.6,681.7 L403.5,685.7 L398.8,686.5 L396.3,691.3 L387.8,692.2 L387.4,697.3 L385.3,699.1 L378.5,698.9 L379.6,702.7 L372.6,703.5 L372.8,707.9 L367.9,710.6 L366.3,715.4 L363.4,714.4 L360.9,709.7 L356.6,710.5 L357.8,721.3 L355.0,724.1 L349.5,725.3 L341.4,722.0 L335.0,723.2 L330.1,720.5 L327.2,721.0 L323.0,719.1 L322.8,717.0 L324.5,715.0 L321.4,709.9 L321.2,703.7 L320.2,703.7 L322.1,701.4 L321.2,695.6 L322.6,690.5 L321.4,690.0 L321.5,684.9 L318.6,683.5 L320.5,683.4 L319.6,682.5 L321.5,682.4 L321.5,681.6 L318.7,682.1 L321.0,681.4 L322.3,670.9 L324.7,668.5 L324.0,667.5 L325.1,667.5 L328.9,658.1 L334.3,651.2 L337.0,651.6 L331.9,650.6 L331.8,643.7 L330.2,643.5 L329.9,645.0 L329.6,645.3 L329.1,645.4 L330.1,642.8 L328.9,642.7 L328.5,645.4 L327.7,644.8 L328.9,642.5 L330.2,642.7 L330.2,643.4 L331.9,643.5 L334.8,631.0 L341.0,630.6 L341.2,624.6 L343.3,622.2 L342.6,621.9 L338.1,628.7 L331.6,630.0 L331.7,631.2 L328.8,624.7 L328.5,621.9 L330.0,626.9 L330.0,625.2 L332.1,625.8 L331.8,623.9 L336.6,614.2 L334.1,615.8 L334.6,614.7 L332.7,614.3 L333.1,614.5 L332.6,614.9 L332.0,615.3 L332.4,614.5 L331.6,615.2 L332.0,615.5 L331.6,615.3 L331.0,616.4 L330.3,617.0 L332.3,614.2 L328.1,619.6 L326.7,620.2 L333.2,613.2 L331.4,611.9 L334.8,611.8 L343.7,606.0 L339.5,608.3 L340.0,606.7 L343.0,606.0 L341.5,605.6 L344.4,605.7 L345.2,606.5 L352.5,608.0 L346.0,606.1 L349.5,601.0 L348.0,598.9 L351.2,596.8 L353.1,597.7 L353.1,600.2 L356.1,598.5 L360.9,601.7 L378.8,606.8 L396.0,605.8 L400.2,603.7 L413.9,604.5 L421.8,603.1 L428.3,607.9 L447.8,614.2 L462.4,614.0 L474.6,617.4 L488.8,618.1 L493.0,619.6 L498.4,631.7 L498.3,638.8 L494.4,638.1 L492.8,640.9 L492.5,647.9 L494.8,650.6 L494.0,652.0 L495.7,658.4 Z"},{"name":"桃園縣","d":"M681.9,129.0 L689.7,123.3 L699.0,120.9 L698.9,118.8 L699.2,121.0 L701.4,119.8 L699.5,119.6 L699.1,117.9 L700.5,119.6 L706.2,118.3 L714.2,120.1 L713.9,122.9 L716.9,125.6 L719.3,124.9 L720.8,127.8 L728.4,129.4 L733.1,132.7 L736.8,133.2 L734.4,134.0 L736.3,134.5 L733.8,136.3 L737.0,135.3 L738.2,136.6 L735.8,137.7 L738.7,139.7 L750.2,140.4 L751.1,141.3 L749.3,142.3 L748.9,144.4 L751.7,143.4 L754.5,144.8 L753.7,145.9 L752.2,145.2 L752.3,146.3 L755.3,147.0 L751.0,148.4 L754.6,149.9 L753.6,152.8 L758.4,156.8 L751.6,158.3 L751.2,159.6 L754.1,161.5 L755.3,164.4 L752.2,166.6 L748.8,165.7 L749.2,169.4 L743.6,172.8 L734.5,170.7 L729.2,172.2 L727.9,174.7 L729.5,174.6 L729.5,183.2 L730.7,184.5 L725.3,187.2 L727.8,189.9 L727.4,191.1 L733.5,190.9 L728.3,192.8 L725.9,195.5 L728.8,198.2 L726.8,201.5 L729.1,203.1 L731.3,201.8 L731.4,204.8 L734.3,204.4 L735.5,209.1 L738.5,211.6 L735.3,214.0 L739.8,219.2 L737.9,220.7 L732.6,221.0 L732.2,222.7 L738.7,222.6 L745.1,226.7 L752.0,222.7 L756.7,223.5 L759.6,225.8 L760.1,229.6 L762.3,229.6 L764.3,233.4 L766.8,234.6 L767.3,240.8 L771.5,242.5 L770.1,245.9 L763.4,251.1 L762.2,253.4 L766.0,265.4 L768.3,266.9 L771.5,274.5 L779.7,278.1 L779.6,282.2 L781.7,286.5 L774.6,286.9 L771.2,291.0 L770.6,293.1 L771.9,295.1 L766.6,303.9 L763.7,312.0 L760.6,313.8 L758.6,312.8 L755.3,317.3 L752.2,319.0 L749.8,319.2 L744.9,316.6 L741.6,313.0 L740.1,307.8 L742.7,302.3 L739.7,301.5 L737.9,297.8 L738.2,288.8 L733.3,289.2 L733.1,284.3 L728.1,278.5 L725.8,277.4 L721.2,279.3 L719.7,278.4 L722.4,269.2 L719.2,264.4 L722.5,256.0 L720.3,253.0 L711.9,250.0 L709.8,247.3 L706.1,245.9 L706.2,241.8 L701.9,240.4 L700.4,235.9 L692.9,239.4 L692.2,234.7 L687.1,236.4 L686.6,232.6 L685.0,233.5 L676.4,228.8 L677.3,227.1 L668.2,222.5 L672.2,216.8 L670.2,208.9 L664.5,208.2 L663.3,209.9 L656.7,208.5 L653.7,206.8 L654.8,204.9 L654.2,202.5 L648.0,204.1 L636.6,199.6 L637.6,192.8 L636.7,187.9 L632.6,185.3 L629.8,184.2 L623.3,186.5 L619.1,184.3 L614.2,188.5 L611.9,186.8 L621.0,173.7 L621.1,168.4 L620.3,168.3 L620.1,168.0 L622.8,168.7 L622.9,168.5 L619.9,167.8 L622.5,165.7 L626.9,156.7 L634.5,148.4 L645.1,144.6 L648.0,140.9 L657.9,136.1 L671.6,133.2 L681.9,129.0 Z"},{"name":"屏東縣","d":"M514.8,1269.3 L514.7,1269.0 L515.3,1268.8 L514.8,1269.3 Z M396.2,1169.1 L394.2,1167.4 L397.8,1162.2 L396.9,1159.8 L402.7,1156.3 L406.5,1158.3 L405.8,1161.6 L396.2,1169.1 Z M578.5,1240.8 L578.6,1240.9 L578.5,1240.9 L578.5,1240.8 Z M578.0,1243.0 L578.4,1242.9 L577.9,1243.3 L578.0,1243.0 Z M513.2,1290.4 L508.8,1278.6 L512.8,1274.2 L511.7,1272.0 L512.7,1269.2 L514.8,1269.5 L516.0,1268.5 L514.6,1259.8 L513.3,1258.8 L519.1,1255.3 L519.1,1250.3 L516.8,1246.3 L516.9,1243.3 L514.4,1240.5 L514.7,1238.3 L513.0,1237.2 L513.7,1233.9 L511.2,1223.1 L508.0,1215.7 L508.6,1211.5 L504.0,1202.1 L496.6,1195.0 L497.7,1193.6 L496.1,1193.8 L497.1,1189.3 L494.0,1180.7 L493.7,1176.1 L489.6,1170.1 L481.8,1162.7 L479.2,1156.8 L475.8,1153.5 L477.1,1154.5 L477.0,1153.2 L474.0,1150.1 L449.4,1133.6 L447.3,1133.8 L428.4,1122.5 L429.3,1121.5 L428.0,1121.9 L422.5,1115.6 L426.0,1115.6 L425.4,1114.5 L423.2,1115.3 L424.1,1113.5 L422.3,1114.3 L422.0,1112.2 L418.6,1110.8 L418.2,1095.3 L421.0,1085.7 L422.9,1084.3 L424.8,1079.6 L426.5,1069.7 L426.0,1064.8 L421.9,1058.0 L422.8,1041.6 L429.4,1021.1 L428.9,1001.1 L432.4,989.5 L434.0,978.1 L436.6,975.3 L442.2,975.6 L444.0,977.7 L448.2,978.9 L455.3,977.2 L463.1,979.0 L481.0,962.2 L494.6,957.6 L495.8,960.7 L499.1,959.6 L500.0,967.1 L504.0,968.5 L506.3,966.0 L510.3,965.3 L515.0,959.4 L522.1,959.3 L532.5,965.3 L535.6,971.2 L540.6,976.4 L545.4,974.2 L545.7,970.0 L548.3,970.5 L555.9,964.9 L559.2,964.7 L562.9,969.5 L564.5,970.1 L566.2,968.0 L568.5,970.3 L570.4,976.2 L569.1,979.7 L571.5,983.3 L579.2,985.2 L583.5,990.3 L583.6,998.7 L579.5,1003.2 L580.8,1006.1 L580.6,1012.6 L576.7,1020.6 L569.1,1020.9 L568.0,1022.0 L566.8,1020.5 L564.6,1020.8 L560.7,1028.1 L554.9,1028.7 L554.5,1030.6 L551.9,1030.1 L551.0,1031.5 L543.3,1029.8 L545.0,1034.9 L543.2,1037.6 L543.0,1041.6 L532.5,1058.1 L532.3,1064.4 L529.3,1068.6 L530.3,1075.1 L527.8,1076.4 L527.0,1082.0 L530.7,1089.3 L532.0,1098.1 L535.6,1104.0 L533.3,1108.9 L531.0,1110.0 L532.3,1112.9 L531.1,1117.6 L539.7,1120.9 L539.3,1123.4 L544.3,1133.0 L541.0,1136.2 L531.9,1137.8 L533.3,1140.4 L531.5,1142.5 L533.0,1144.1 L530.9,1145.7 L530.3,1149.8 L528.5,1151.9 L531.7,1154.6 L535.2,1155.0 L536.7,1159.3 L539.4,1158.7 L542.7,1160.1 L545.4,1163.9 L546.8,1170.7 L543.5,1173.8 L540.4,1174.0 L540.3,1178.0 L544.4,1179.7 L545.6,1182.5 L549.8,1183.2 L550.2,1185.8 L547.2,1186.1 L546.6,1188.5 L547.6,1193.3 L553.2,1191.0 L559.8,1197.7 L568.1,1199.4 L570.0,1201.9 L569.3,1203.3 L575.6,1201.8 L576.9,1199.5 L581.0,1197.3 L582.0,1202.0 L580.2,1207.4 L581.1,1213.4 L579.1,1216.4 L580.3,1225.0 L579.3,1234.2 L581.3,1236.0 L577.2,1240.3 L578.0,1245.0 L579.7,1248.9 L583.0,1250.3 L582.0,1254.4 L579.1,1257.2 L580.0,1271.5 L582.7,1277.0 L578.2,1280.0 L577.9,1283.4 L574.3,1285.4 L574.0,1289.7 L566.8,1293.8 L563.3,1294.3 L561.9,1305.1 L562.0,1308.7 L564.6,1315.1 L569.1,1320.9 L568.9,1324.5 L570.6,1327.5 L565.7,1328.1 L564.0,1322.3 L560.4,1321.1 L555.5,1314.3 L552.3,1314.7 L549.6,1311.8 L548.0,1313.4 L546.7,1311.0 L541.9,1310.7 L536.3,1305.2 L532.1,1306.2 L532.6,1307.1 L528.5,1310.6 L529.7,1315.4 L529.1,1314.7 L527.3,1317.3 L527.1,1320.0 L522.0,1319.7 L520.1,1315.0 L517.4,1314.5 L517.0,1312.4 L518.4,1297.0 L515.8,1291.4 L513.2,1290.4 Z"},{"name":"台中市","d":"M455.7,421.3 L456.1,419.8 L456.7,419.5 L455.7,421.3 Z M456.6,420.6 L456.6,421.7 L455.5,421.5 L456.6,420.6 Z M438.7,450.6 L437.6,450.0 L436.8,451.7 L437.5,449.8 L438.8,450.3 L441.5,443.6 L440.0,442.8 L441.0,443.1 L442.4,439.5 L444.1,440.3 L447.5,433.0 L442.3,427.8 L448.6,429.5 L453.3,423.7 L451.5,421.9 L454.5,421.6 L459.2,424.5 L461.7,424.6 L460.5,423.8 L462.0,420.7 L458.1,418.3 L462.5,417.9 L463.0,417.5 L462.0,415.6 L463.4,415.5 L462.4,414.7 L463.9,413.9 L462.9,413.3 L464.5,411.3 L465.9,404.4 L474.1,393.1 L475.3,393.1 L475.6,388.7 L477.6,385.5 L483.9,378.2 L485.1,379.1 L485.3,378.9 L484.2,377.9 L486.4,373.9 L492.8,378.8 L495.0,384.6 L501.0,388.4 L511.0,401.6 L516.1,403.6 L516.0,405.1 L524.0,407.4 L535.1,417.0 L542.4,419.9 L550.3,420.9 L560.9,430.8 L567.3,430.9 L573.9,428.7 L586.4,429.0 L590.0,425.2 L587.9,413.7 L594.6,410.7 L596.9,412.1 L601.7,412.0 L605.1,414.2 L610.5,413.3 L613.8,415.7 L617.9,414.6 L622.8,422.5 L628.3,427.6 L633.6,428.2 L635.7,422.9 L640.7,420.9 L641.7,418.2 L644.6,417.7 L646.4,420.2 L648.2,419.8 L653.9,415.2 L658.4,415.2 L659.3,411.5 L665.0,404.4 L674.4,403.9 L676.1,399.2 L679.5,396.4 L681.9,396.2 L684.3,390.5 L688.8,390.7 L690.7,396.9 L696.2,395.3 L697.1,390.2 L700.2,387.0 L699.6,383.9 L701.0,380.7 L705.0,379.8 L705.9,378.3 L721.4,376.9 L725.6,373.6 L729.3,376.7 L728.1,386.5 L729.0,389.7 L733.0,393.0 L738.3,391.6 L741.8,393.2 L744.9,401.1 L747.7,401.4 L754.2,396.7 L756.6,397.5 L765.5,395.3 L767.0,395.5 L768.6,399.1 L770.4,398.4 L771.8,402.2 L768.2,404.5 L766.2,408.7 L765.8,418.4 L761.6,423.7 L755.8,423.5 L755.2,427.7 L752.8,430.8 L750.8,430.4 L747.4,434.1 L748.9,443.4 L742.7,444.5 L740.7,447.5 L737.8,447.7 L737.7,451.1 L734.5,455.2 L728.9,451.9 L721.1,451.4 L720.2,450.3 L717.4,453.1 L712.9,452.9 L711.7,450.8 L709.1,449.9 L707.7,446.9 L704.3,447.9 L700.6,455.6 L698.4,456.7 L692.2,453.1 L688.2,455.9 L684.2,455.4 L679.0,459.5 L674.3,454.5 L672.0,458.4 L667.5,459.2 L663.5,465.4 L651.6,465.5 L645.8,473.0 L637.0,477.9 L634.7,480.9 L633.0,479.0 L629.7,479.7 L628.1,483.3 L626.2,479.2 L623.3,479.4 L620.8,481.5 L616.5,491.3 L613.9,492.4 L612.9,494.8 L608.1,495.5 L603.3,494.2 L599.4,491.4 L593.5,497.1 L589.1,499.0 L579.4,495.8 L580.3,499.2 L579.3,502.6 L574.8,507.4 L575.9,501.6 L575.1,498.3 L572.8,495.5 L568.1,495.7 L566.4,492.6 L563.3,492.6 L560.4,495.4 L558.3,500.8 L558.0,512.5 L551.0,514.5 L545.0,527.8 L539.4,532.4 L537.8,535.9 L529.3,539.9 L524.4,536.0 L520.1,535.7 L515.7,537.4 L510.6,536.2 L494.8,526.5 L494.5,529.6 L491.5,527.7 L487.8,528.0 L488.8,524.9 L487.2,519.8 L487.9,513.5 L485.5,511.0 L483.4,500.8 L461.9,496.6 L458.8,492.9 L456.0,491.9 L452.8,486.9 L453.6,483.4 L447.6,469.2 L439.9,465.2 L442.7,459.2 L440.6,462.2 L431.3,458.4 L433.8,459.3 L431.4,458.0 L434.0,458.8 L436.2,453.0 L435.3,456.0 L438.7,450.6 Z"},{"name":"台南市","d":"M471.7,834.0 L474.5,830.4 L476.6,824.6 L478.2,828.6 L482.5,831.0 L490.8,828.5 L497.8,830.4 L498.5,832.8 L491.8,842.8 L493.3,845.9 L491.6,848.8 L489.2,849.1 L489.7,850.7 L484.8,853.3 L483.2,857.7 L479.5,860.5 L475.2,868.2 L475.1,871.7 L467.8,883.8 L463.5,888.7 L454.0,894.5 L446.0,903.8 L439.3,908.2 L437.8,913.5 L431.1,913.3 L431.4,918.0 L429.2,918.1 L428.6,922.9 L425.0,923.1 L416.0,945.9 L413.4,947.4 L409.9,943.7 L405.8,945.2 L404.0,944.1 L400.5,947.5 L400.9,949.6 L396.4,951.6 L397.0,952.9 L393.8,956.8 L392.9,955.6 L387.1,956.1 L384.5,951.9 L382.8,954.0 L380.9,952.2 L370.6,950.3 L368.4,950.5 L368.9,953.5 L366.7,953.8 L361.9,951.4 L361.8,953.9 L360.2,954.2 L356.3,950.8 L352.9,950.0 L351.7,945.7 L347.7,948.5 L338.9,944.1 L333.0,947.7 L332.0,934.3 L329.0,927.7 L326.2,927.8 L327.2,925.9 L325.4,925.7 L327.4,925.7 L327.7,924.4 L324.4,919.7 L310.4,907.0 L291.9,897.1 L289.6,892.2 L283.7,887.3 L284.8,876.6 L294.0,860.7 L296.5,847.2 L296.4,846.8 L295.6,846.4 L295.3,846.0 L296.8,845.8 L295.4,845.4 L297.5,844.1 L300.5,837.5 L300.5,836.5 L298.9,836.1 L298.3,835.2 L301.2,835.7 L300.9,834.1 L298.5,834.6 L301.3,831.4 L300.7,826.3 L302.9,825.2 L305.5,805.6 L306.7,803.8 L310.0,802.9 L308.9,801.7 L312.6,793.5 L313.0,787.1 L323.5,794.2 L324.3,797.0 L330.8,799.4 L334.2,805.1 L337.8,805.6 L336.7,803.3 L337.6,801.5 L343.0,805.0 L345.8,805.1 L349.4,802.5 L354.6,791.9 L361.0,790.3 L364.6,786.8 L364.8,785.2 L362.5,785.3 L364.3,782.2 L366.7,782.2 L368.3,784.1 L371.2,783.1 L370.4,778.7 L373.5,773.7 L379.8,773.7 L380.3,769.4 L382.1,768.8 L383.5,770.7 L387.5,769.8 L392.7,764.1 L403.9,763.2 L413.2,759.4 L416.0,760.6 L417.3,763.2 L424.1,759.3 L435.6,765.2 L437.7,769.1 L441.3,766.1 L443.0,766.6 L444.4,769.3 L439.4,772.1 L439.2,775.9 L440.8,774.6 L446.4,776.1 L449.0,780.8 L447.5,782.2 L446.4,781.5 L446.5,785.2 L456.3,788.3 L458.5,791.5 L452.5,797.6 L453.8,803.7 L452.3,806.4 L451.8,812.6 L455.9,818.8 L454.3,822.5 L451.3,824.9 L453.8,827.9 L459.0,829.1 L463.7,833.0 L467.2,831.6 L471.7,834.0 Z"},{"name":"基隆市","d":"M885.6,93.1 L886.3,91.5 L888.0,90.9 L887.8,92.2 L885.6,93.1 Z M870.6,103.7 L870.6,103.6 L870.6,103.6 L870.6,103.7 Z M884.6,107.1 L884.7,107.2 L884.5,107.1 L884.6,107.1 Z M885.8,107.0 L885.8,107.4 L885.4,107.2 L885.8,107.0 Z M869.0,104.5 L870.6,103.8 L873.8,105.4 L876.1,103.1 L878.7,104.0 L879.7,102.7 L884.8,104.4 L883.7,104.5 L881.0,106.2 L882.7,105.7 L883.7,107.0 L883.0,105.5 L884.0,107.2 L888.3,108.5 L886.4,108.9 L888.6,109.2 L889.6,111.4 L888.6,108.5 L894.6,108.9 L892.6,111.0 L893.6,115.2 L892.8,118.2 L889.9,116.7 L890.9,121.2 L888.4,122.0 L886.9,119.7 L882.7,119.0 L880.4,121.9 L874.6,122.9 L876.6,123.4 L878.0,126.3 L878.4,134.5 L881.2,134.9 L883.4,137.8 L879.4,142.5 L876.9,141.8 L872.2,144.4 L867.7,144.1 L861.6,138.6 L857.2,138.8 L853.4,137.2 L850.2,134.5 L850.9,131.0 L848.4,133.0 L842.1,129.0 L839.8,125.9 L840.9,124.8 L837.8,116.2 L834.4,114.9 L832.2,111.7 L836.7,109.4 L840.0,109.7 L843.0,107.0 L849.7,105.7 L860.6,98.1 L859.9,102.2 L867.9,102.6 L869.0,104.5 Z M886.2,90.9 L886.0,90.8 L886.2,90.7 L886.2,90.9 Z"},{"name":"南投縣","d":"M698.4,456.7 L700.6,455.6 L704.3,447.9 L707.7,446.9 L709.1,449.9 L711.7,450.8 L712.9,452.9 L717.4,453.1 L720.2,450.3 L731.9,453.3 L734.5,455.2 L736.7,460.2 L736.8,464.0 L728.5,465.8 L722.4,471.6 L715.1,472.7 L715.8,480.2 L713.1,480.1 L714.6,482.2 L713.4,488.4 L718.3,489.6 L725.2,495.6 L729.6,496.3 L728.7,500.8 L726.3,503.7 L727.8,507.4 L719.7,516.1 L718.3,515.4 L714.0,519.1 L714.9,524.4 L706.1,542.9 L707.6,548.5 L710.7,548.6 L712.2,552.1 L710.1,558.7 L711.6,573.2 L706.5,575.8 L708.3,577.5 L709.0,582.9 L707.2,584.1 L707.9,587.0 L703.7,588.9 L702.3,594.8 L699.0,599.2 L698.9,606.2 L694.4,613.5 L695.9,618.8 L687.0,624.7 L688.4,627.2 L687.7,628.4 L696.9,633.4 L695.4,635.1 L695.3,638.7 L695.6,640.6 L699.0,642.8 L699.6,648.9 L699.0,656.8 L696.6,660.4 L697.7,666.3 L693.7,674.9 L694.0,679.2 L690.0,689.3 L687.5,691.0 L683.4,689.2 L678.4,693.2 L677.9,695.9 L674.0,694.2 L669.4,694.4 L669.0,699.5 L671.8,700.8 L671.8,702.0 L670.7,704.6 L668.9,704.3 L666.9,706.5 L668.6,710.2 L667.2,714.2 L668.6,717.0 L666.4,717.3 L663.1,721.3 L657.1,718.8 L652.3,719.8 L650.2,718.8 L646.9,721.7 L640.2,720.0 L638.1,727.1 L635.3,728.6 L635.1,731.5 L630.1,736.6 L637.0,741.4 L634.5,745.4 L621.9,751.3 L620.2,747.4 L622.1,745.1 L619.5,741.1 L610.1,738.6 L605.2,737.6 L598.7,739.3 L595.1,737.0 L593.0,738.0 L583.6,735.9 L577.6,736.1 L575.6,739.1 L569.7,736.9 L561.4,737.8 L559.2,736.5 L555.8,727.5 L554.9,718.9 L550.9,713.4 L551.0,709.7 L555.0,703.5 L554.7,697.8 L556.7,694.5 L554.7,693.0 L554.0,689.6 L546.2,690.5 L531.9,683.8 L524.1,685.4 L524.0,682.5 L519.9,678.2 L518.0,678.9 L518.3,681.6 L515.3,683.0 L510.5,681.9 L508.7,682.6 L507.9,685.4 L500.1,685.5 L496.9,683.3 L497.4,678.4 L495.1,677.7 L490.5,682.1 L489.1,676.3 L491.2,673.4 L491.2,670.0 L495.3,662.0 L495.7,658.4 L494.0,652.0 L494.8,650.6 L492.5,647.9 L492.8,640.9 L494.4,638.1 L498.3,638.6 L498.3,631.4 L493.0,619.6 L508.0,613.8 L507.8,612.3 L506.3,612.1 L505.4,607.2 L496.6,609.7 L490.7,604.7 L492.9,604.9 L490.9,602.7 L491.9,602.1 L487.3,603.3 L490.7,601.6 L487.7,600.6 L489.1,599.8 L488.1,598.6 L485.1,600.2 L484.5,599.2 L487.1,596.8 L485.8,595.8 L487.2,596.0 L488.7,592.8 L486.8,591.8 L486.0,588.8 L487.4,588.5 L489.3,582.6 L488.5,580.7 L490.4,580.7 L491.2,577.4 L489.9,575.6 L490.9,574.0 L489.2,572.8 L491.0,571.9 L490.6,569.5 L492.0,567.8 L488.7,565.1 L492.1,563.5 L488.5,557.3 L490.7,556.7 L488.4,555.7 L491.7,557.1 L495.2,553.1 L496.4,545.4 L491.7,541.2 L492.2,536.5 L504.1,537.1 L503.2,535.6 L506.2,534.0 L515.7,537.4 L520.1,535.7 L524.4,536.0 L529.3,539.9 L537.8,535.9 L539.4,532.4 L545.0,527.8 L551.0,514.5 L558.0,512.5 L558.3,500.8 L560.4,495.4 L563.3,492.6 L566.4,492.6 L568.1,495.7 L572.8,495.5 L575.1,498.3 L575.9,501.6 L574.8,507.4 L579.3,502.6 L580.3,499.2 L579.4,495.8 L589.1,499.0 L593.5,497.1 L599.4,491.4 L603.3,494.2 L608.1,495.5 L612.9,494.8 L613.9,492.4 L616.5,491.3 L620.8,481.5 L623.3,479.4 L626.2,479.2 L628.1,483.3 L629.7,479.7 L633.0,479.0 L634.7,480.9 L637.0,477.9 L645.8,473.0 L651.6,465.5 L663.5,465.4 L667.5,459.2 L672.0,458.4 L674.3,454.5 L679.0,459.5 L684.2,455.4 L688.2,455.9 L692.2,453.1 L698.4,456.7 Z"},{"name":"澎湖縣","d":"M72.1,842.0 L72.0,842.0 L72.1,841.8 L72.1,842.0 Z M73.4,838.0 L69.8,833.4 L83.0,832.0 L81.5,834.5 L81.3,839.3 L78.9,838.8 L76.7,840.8 L77.0,844.5 L73.9,842.8 L74.0,841.0 L73.0,841.5 L73.4,838.0 Z M135.3,615.8 L135.0,616.2 L134.1,615.4 L133.8,616.0 L133.9,615.0 L135.3,615.8 Z M134.4,615.8 L134.2,615.9 L134.1,615.8 L134.4,615.8 Z M134.9,616.6 L134.7,616.8 L134.3,617.0 L134.9,616.6 Z M134.9,617.1 L134.6,617.1 L134.6,617.0 L134.9,617.1 Z M136.2,619.0 L135.6,618.7 L135.8,618.5 L136.2,619.0 Z M135.9,619.5 L134.7,619.9 L135.4,618.9 L135.9,619.5 Z M136.5,619.3 L136.3,619.3 L136.1,619.3 L136.2,619.2 L136.5,619.3 Z M136.4,619.5 L136.0,619.6 L136.0,619.4 L136.4,619.5 Z M136.2,619.9 L136.2,619.8 L136.4,619.9 L136.2,619.9 Z M137.5,620.5 L137.6,620.7 L137.4,620.9 L137.5,620.5 Z M137.2,620.7 L137.1,620.6 L137.2,620.5 L137.2,620.7 Z M136.9,621.0 L136.7,620.9 L136.9,620.8 L136.9,621.0 Z M137.4,621.0 L137.1,621.0 L137.3,620.9 L137.4,621.0 Z M137.7,621.1 L137.5,621.2 L137.7,621.0 L137.7,621.1 Z M137.6,621.5 L137.2,621.2 L137.5,621.0 L137.4,621.3 L137.6,621.5 Z M137.0,621.2 L136.9,621.1 L137.1,621.1 L137.0,621.2 Z M137.9,621.7 L137.5,621.8 L137.7,621.1 L138.1,621.8 L137.9,621.7 Z M138.8,621.9 L138.8,621.6 L139.3,621.6 L138.8,621.9 Z M139.1,622.5 L138.9,622.3 L139.2,621.8 L139.3,622.3 L139.1,622.5 Z M138.1,622.0 L137.9,621.9 L137.9,621.8 L138.1,622.0 Z M137.9,622.3 L137.8,622.2 L138.1,622.3 L138.0,622.4 L137.9,622.3 Z M139.4,622.7 L139.2,622.4 L139.5,622.3 L139.4,622.7 Z M140.1,622.7 L139.6,622.6 L140.0,622.3 L140.1,622.7 Z M138.0,622.4 L137.8,622.5 L137.9,622.3 L138.0,622.4 Z M139.5,622.8 L139.5,622.6 L139.6,622.6 L139.5,622.8 Z M139.0,622.7 L138.8,622.8 L139.0,622.7 L139.0,622.7 Z M139.3,623.1 L139.1,623.0 L139.3,622.9 L139.3,623.1 Z M139.3,623.2 L139.3,623.1 L139.5,623.0 L139.3,623.2 Z M139.4,623.5 L139.2,623.5 L139.5,623.4 L139.4,623.5 Z M134.9,626.1 L135.9,626.0 L137.1,623.6 L137.7,623.6 L137.8,625.4 L136.1,626.6 L134.5,630.2 L134.9,626.1 Z M137.9,623.6 L137.8,623.8 L137.8,623.6 L137.9,623.6 Z M138.1,623.8 L138.0,623.9 L138.0,623.7 L138.1,623.8 Z M131.1,626.3 L130.8,626.2 L130.9,626.1 L131.1,626.3 Z M130.4,626.7 L129.9,626.5 L130.3,626.5 L130.4,626.7 Z M136.3,626.7 L136.1,626.6 L136.4,626.6 L136.3,626.7 Z M136.6,626.9 L136.4,626.8 L136.7,626.7 L136.6,626.9 Z M137.5,627.0 L136.8,627.1 L136.9,626.8 L137.5,627.0 Z M137.8,627.3 L137.6,627.6 L137.2,627.4 L137.8,627.3 Z M137.6,629.6 L137.5,629.7 L137.5,629.4 L137.6,629.6 Z M133.9,637.2 L139.2,629.8 L139.4,631.9 L142.8,633.4 L143.5,635.5 L140.8,636.2 L140.7,637.8 L138.9,636.4 L140.4,637.8 L138.0,637.5 L136.2,642.4 L133.9,637.2 Z M138.1,629.9 L138.0,630.1 L137.8,629.9 L138.1,629.9 Z M138.0,630.5 L137.8,630.4 L138.1,630.4 L138.0,630.5 Z M134.6,631.2 L134.4,631.5 L134.3,631.1 L134.6,631.2 Z M139.0,637.7 L138.3,637.8 L138.3,637.6 L139.0,637.7 Z M139.5,638.3 L139.2,638.2 L139.4,638.2 L139.5,638.3 Z M139.4,639.2 L138.8,639.3 L139.5,639.0 L139.4,639.2 Z M139.9,639.5 L139.4,639.4 L139.6,639.1 L139.9,639.5 Z M138.7,639.6 L138.4,640.2 L138.5,639.2 L138.7,639.6 Z M119.9,648.7 L120.2,645.5 L118.4,644.7 L119.0,643.7 L121.2,644.4 L119.9,648.7 Z M139.4,645.9 L139.1,645.8 L138.9,645.8 L139.1,645.7 L139.4,645.9 Z M139.6,646.1 L139.3,646.1 L139.5,645.9 L139.6,646.1 Z M139.8,646.5 L139.6,646.3 L139.9,646.1 L139.8,646.5 Z M138.8,647.8 L137.7,647.5 L138.3,646.8 L138.8,647.8 Z M138.6,646.8 L138.5,646.8 L138.5,646.8 L138.6,646.8 Z M138.8,646.9 L138.6,646.9 L138.8,646.8 L138.8,646.9 Z M138.8,647.1 L138.7,647.1 L138.8,647.0 L138.8,647.1 Z M124.1,647.2 L123.5,647.7 L123.4,647.1 L124.1,647.2 Z M139.6,647.7 L138.6,648.2 L139.3,647.5 L139.6,647.7 Z M138.5,648.0 L138.1,648.0 L138.6,648.0 L138.5,648.0 Z M133.1,653.4 L132.8,653.4 L132.8,653.3 L133.1,653.4 Z M123.2,653.7 L122.7,653.7 L122.8,653.5 L123.2,653.7 Z M133.7,654.3 L133.0,654.0 L133.1,653.8 L133.7,654.3 Z M159.6,654.5 L159.2,654.5 L159.7,654.2 L159.6,654.5 Z M121.5,654.1 L121.3,654.2 L121.3,654.0 L121.5,654.1 Z M153.1,654.2 L152.6,655.0 L152.3,654.4 L153.1,654.2 Z M121.4,654.4 L121.3,654.5 L121.3,654.4 L121.4,654.4 Z M120.8,655.2 L120.4,655.1 L120.8,654.7 L120.8,655.2 Z M159.7,655.1 L159.4,655.2 L159.5,655.0 L159.7,655.1 Z M134.1,655.4 L133.7,655.6 L133.5,655.2 L134.1,655.4 Z M159.9,658.5 L159.2,656.6 L159.8,656.2 L159.6,655.4 L160.2,656.1 L159.9,658.5 Z M120.9,656.3 L120.3,655.8 L120.8,655.4 L120.9,656.3 Z M153.3,655.7 L152.7,655.9 L152.7,655.7 L153.3,655.7 Z M154.2,656.1 L154.0,656.2 L154.0,656.1 L154.2,656.1 Z M159.4,656.3 L159.3,656.3 L159.3,656.2 L159.4,656.3 Z M154.4,657.4 L154.2,657.5 L154.2,657.5 L154.4,657.4 Z M154.1,657.5 L154.0,657.5 L154.1,657.4 L154.1,657.5 Z M153.9,657.5 L153.9,657.5 L153.9,657.4 L153.9,657.5 Z M143.4,657.6 L143.1,657.5 L143.6,657.5 L143.4,657.6 Z M154.5,657.5 L154.5,657.5 L154.5,657.5 L154.5,657.5 Z M154.3,657.6 L154.2,657.6 L154.3,657.6 L154.3,657.6 Z M154.1,657.7 L154.1,657.6 L154.2,657.6 L154.1,657.7 Z M153.9,657.7 L153.9,657.7 L153.9,657.6 L153.9,657.7 Z M154.0,657.7 L153.9,657.7 L154.0,657.6 L154.0,657.7 Z M158.7,658.1 L158.6,658.1 L158.5,658.0 L158.7,658.1 Z M159.2,660.3 L157.5,660.3 L158.1,658.2 L159.2,660.3 Z M157.5,658.4 L157.1,658.6 L157.3,658.4 L157.5,658.4 Z M154.8,659.8 L155.2,660.7 L154.8,659.9 L154.8,659.9 L154.8,659.8 Z M158.9,661.9 L159.7,660.8 L160.4,661.3 L160.2,661.5 L158.9,661.9 Z M120.4,660.9 L119.7,661.6 L119.6,660.7 L120.4,660.9 Z M140.2,664.9 L140.9,661.6 L142.0,661.1 L142.0,661.8 L140.2,664.9 Z M139.5,662.7 L139.4,662.7 L139.4,662.7 L139.5,662.7 Z M158.5,666.7 L154.5,666.4 L156.5,665.6 L157.2,664.4 L157.0,663.9 L157.2,663.3 L157.4,663.0 L158.4,663.6 L158.5,666.7 Z M119.6,663.4 L119.5,663.4 L119.6,663.3 L119.6,663.4 Z M119.8,663.5 L119.7,663.6 L119.7,663.5 L119.8,663.5 Z M117.7,665.5 L117.5,665.5 L117.5,665.5 L117.7,665.5 Z M117.6,669.4 L117.3,669.0 L117.7,669.2 L117.6,669.4 Z M117.8,669.2 L117.7,669.2 L117.8,669.1 L117.8,669.2 Z M117.8,669.3 L117.7,669.4 L117.7,669.3 L117.8,669.3 Z M118.0,669.5 L117.9,669.5 L117.9,669.4 L118.0,669.5 Z M147.0,673.3 L145.5,672.1 L146.7,669.9 L147.9,670.4 L147.0,673.3 Z M117.2,669.8 L117.2,669.8 L117.2,669.8 L117.2,669.8 Z M116.6,670.5 L116.4,670.7 L116.5,670.5 L116.6,670.5 Z M116.4,670.9 L116.0,670.8 L116.3,670.6 L116.4,670.9 Z M116.5,671.0 L116.4,671.0 L116.5,671.0 L116.5,671.0 Z M129.1,671.1 L128.9,671.3 L128.8,671.1 L129.1,671.1 Z M131.3,674.1 L130.9,674.1 L131.3,674.1 L131.3,674.1 Z M137.1,674.8 L136.9,674.8 L137.1,674.8 L137.1,674.8 Z M138.2,675.3 L138.0,675.4 L138.0,675.3 L138.2,675.3 Z M141.3,678.1 L141.2,678.1 L141.2,678.0 L141.3,678.1 Z M124.9,683.2 L123.3,682.2 L124.2,680.9 L125.0,681.8 L124.9,683.2 Z M135.0,686.4 L134.7,686.4 L135.0,686.4 L135.0,686.4 Z M140.3,686.8 L140.2,686.5 L140.4,686.6 L140.3,686.8 Z M103.8,812.1 L103.6,812.2 L103.6,812.1 L103.8,812.1 Z M104.0,818.6 L106.4,815.6 L108.4,815.3 L106.5,818.9 L104.0,818.6 Z M157.8,817.5 L159.6,815.7 L162.5,815.8 L160.1,822.9 L157.5,820.5 L158.6,819.5 L157.8,817.5 Z M155.9,817.0 L154.9,815.9 L156.3,815.3 L156.5,815.9 L155.9,817.0 Z M101.8,817.5 L101.5,817.7 L101.5,817.5 L101.8,817.5 Z M141.6,818.7 L141.3,818.8 L141.2,818.7 L141.6,818.7 Z M138.7,821.8 L138.3,820.2 L139.9,819.4 L142.7,819.8 L142.7,822.8 L138.7,821.8 Z M107.7,819.6 L107.0,819.4 L107.6,819.3 L107.7,819.6 Z M118.6,823.0 L118.5,823.0 L118.5,822.9 L118.6,823.0 Z M118.3,823.5 L117.8,823.4 L118.3,823.2 L118.3,823.5 Z M118.5,823.7 L118.3,823.7 L118.5,823.6 L118.5,823.7 Z M108.1,826.6 L107.8,826.5 L107.7,826.3 L108.1,826.6 Z M98.3,771.4 L99.5,769.1 L97.7,765.7 L99.2,765.6 L101.4,768.5 L103.0,766.6 L103.8,773.2 L105.5,773.1 L103.6,775.0 L106.6,774.4 L106.5,776.5 L103.3,778.1 L105.4,782.3 L96.2,781.0 L99.0,777.4 L98.3,771.4 Z M37.3,764.3 L38.8,760.0 L42.7,762.6 L40.4,764.9 L37.3,764.3 Z M105.7,765.9 L105.1,766.2 L105.2,765.9 L105.7,765.9 Z M106.2,771.2 L105.1,771.3 L105.5,770.0 L106.2,771.2 Z M111.0,772.7 L110.0,772.5 L110.0,772.2 L111.0,772.7 Z M96.9,772.6 L96.5,772.5 L96.7,772.4 L96.9,772.6 Z M107.3,777.9 L110.2,774.8 L113.5,773.5 L116.0,777.5 L112.0,776.9 L109.2,780.5 L107.3,777.9 Z M109.7,773.8 L109.3,774.4 L108.8,773.7 L109.7,773.8 Z M111.8,774.1 L111.6,774.1 L111.8,774.0 L111.8,774.1 Z M119.0,777.2 L119.0,776.9 L119.2,776.9 L119.0,777.2 Z M119.2,778.0 L118.8,778.0 L118.9,777.5 L119.2,778.0 Z M114.1,778.8 L113.1,779.0 L113.4,778.2 L114.1,778.8 Z M94.6,780.7 L93.7,780.1 L93.6,779.8 L94.6,780.7 Z M107.1,780.7 L106.9,780.7 L107.1,780.7 L107.1,780.7 Z M88.2,781.4 L87.2,781.5 L88.0,781.0 L88.2,781.4 Z M110.4,781.2 L110.3,781.2 L110.3,781.2 L110.4,781.2 Z M88.4,781.4 L88.3,781.3 L88.4,781.1 L88.4,781.4 Z M90.5,782.2 L89.9,782.0 L90.4,782.0 L90.5,782.2 Z M107.8,782.5 L107.6,782.5 L107.8,782.5 L107.8,782.5 Z M107.7,782.7 L107.7,782.6 L107.8,782.7 L107.7,782.7 Z M114.5,783.3 L113.8,783.4 L114.6,783.1 L114.5,783.3 Z M89.2,784.0 L88.7,784.2 L89.2,783.6 L89.2,784.0 Z M40.0,793.0 L38.4,792.7 L39.0,791.6 L39.1,792.2 L39.7,792.9 L40.0,793.0 Z M40.1,792.9 L39.8,792.9 L39.9,792.7 L40.1,792.9 Z M40.9,793.0 L40.1,793.0 L40.1,792.9 L40.9,793.0 Z M45.3,795.2 L44.1,794.9 L44.5,793.5 L45.3,795.2 Z M46.7,799.1 L46.4,798.9 L46.5,798.7 L46.7,799.1 Z M101.2,805.4 L101.0,805.4 L101.1,805.3 L101.2,805.4 Z M101.7,806.1 L101.1,805.7 L101.8,805.6 L101.7,806.1 Z M101.1,806.9 L100.9,806.9 L101.0,806.8 L101.1,806.9 Z M101.5,810.8 L101.3,810.7 L101.5,810.7 L101.5,810.8 Z M102.3,811.0 L101.4,811.1 L101.5,811.0 L101.4,810.9 L101.5,810.8 L102.3,811.0 Z M104.7,814.6 L102.6,813.9 L101.8,812.2 L103.4,812.3 L104.3,812.0 L104.7,814.6 Z M168.6,706.1 L168.5,706.3 L168.1,706.1 L168.6,706.1 Z M156.1,710.6 L155.7,710.3 L156.2,710.1 L156.1,710.6 Z M155.9,711.2 L155.6,711.3 L155.8,711.0 L155.9,711.2 Z M156.4,711.8 L155.9,712.1 L155.9,711.9 L156.4,711.8 Z M178.8,713.1 L178.5,713.8 L178.1,713.4 L178.8,713.1 Z M136.9,690.9 L137.1,690.8 L137.1,690.8 L136.9,690.9 Z M165.2,679.6 L163.9,679.3 L164.8,678.9 L165.2,679.6 Z M170.1,682.0 L169.2,682.5 L169.6,681.8 L170.1,682.0 Z M168.4,682.2 L168.0,682.1 L168.4,681.8 L168.4,682.2 Z M169.1,682.6 L168.8,682.5 L169.0,682.2 L169.1,682.6 Z M170.6,683.2 L170.2,683.0 L170.5,682.8 L170.6,683.2 Z M169.2,682.9 L168.8,683.4 L169.0,683.0 L169.2,682.9 Z M170.1,683.4 L170.0,683.3 L170.1,683.3 L170.1,683.4 Z M169.9,683.7 L169.7,683.6 L169.9,683.5 L169.9,683.7 Z M160.0,687.6 L160.8,688.2 L160.4,688.7 L160.0,687.6 Z M161.0,688.4 L160.8,688.4 L160.7,688.3 L161.0,688.4 Z M161.5,689.6 L161.0,689.6 L161.3,689.3 L161.5,689.6 Z M162.4,690.0 L162.1,690.0 L162.6,690.0 L162.4,690.0 Z M167.8,702.8 L167.2,702.7 L167.3,702.6 L167.8,702.8 Z M166.0,703.4 L165.9,703.4 L166.2,703.4 L166.0,703.4 Z M178.3,704.8 L177.5,705.3 L177.5,705.1 L178.3,704.8 Z M168.0,705.2 L167.7,705.5 L167.6,705.4 L168.0,705.2 Z M110.3,668.0 L109.9,668.4 L109.5,668.4 L109.5,667.9 L110.3,668.0 Z M114.3,672.9 L114.1,673.0 L113.9,673.0 L114.3,672.9 Z M114.5,673.7 L114.0,673.7 L114.2,673.5 L114.5,673.7 Z M114.4,674.2 L114.2,674.1 L114.3,674.0 L114.4,674.2 Z M118.7,691.5 L118.6,691.5 L118.7,691.3 L118.7,691.5 Z M114.8,696.7 L114.7,696.7 L114.8,696.7 L114.8,696.7 Z M131.6,690.9 L131.0,691.1 L131.6,690.8 L131.6,690.9 Z M115.7,706.2 L115.1,707.0 L115.3,706.5 L115.1,706.3 L115.7,706.2 Z M115.2,706.6 L115.1,706.6 L115.2,706.6 L115.2,706.6 Z M112.4,711.3 L111.8,711.7 L111.2,711.4 L112.4,711.3 Z M110.8,711.6 L110.7,711.5 L111.0,711.4 L110.8,711.6 Z M111.1,711.5 L111.0,711.4 L111.0,711.4 L111.1,711.5 Z M109.3,712.0 L109.7,711.8 L109.8,711.9 L109.3,712.0 Z M107.5,723.7 L105.8,723.4 L106.4,721.4 L108.4,721.5 L107.5,723.7 Z M104.9,733.3 L104.5,730.1 L106.2,732.1 L111.0,728.5 L113.8,727.7 L115.9,729.0 L104.9,733.3 Z M128.7,666.3 L125.3,666.1 L122.6,670.1 L119.7,667.8 L115.4,673.2 L114.4,677.2 L107.1,678.5 L108.8,688.7 L107.6,691.5 L105.1,692.3 L106.5,694.9 L105.0,696.7 L106.5,702.6 L99.6,701.4 L97.4,703.4 L89.6,703.9 L94.5,698.6 L98.1,700.7 L102.0,697.2 L101.6,693.0 L97.3,691.6 L98.9,690.9 L98.0,689.9 L98.8,688.6 L100.3,689.1 L100.3,691.0 L102.4,690.4 L101.8,687.3 L104.0,684.7 L100.6,681.9 L102.3,680.5 L101.6,677.8 L105.0,671.3 L107.7,671.3 L105.8,668.6 L109.2,668.5 L107.6,671.6 L108.3,673.4 L114.1,674.6 L114.7,674.2 L116.0,672.1 L119.5,667.8 L118.4,665.9 L119.9,663.7 L125.0,663.0 L124.3,662.2 L129.2,660.3 L132.1,662.5 L135.2,661.7 L137.2,663.8 L135.7,664.9 L138.7,665.6 L137.5,667.1 L139.9,669.6 L139.1,671.5 L135.4,671.3 L136.1,673.7 L134.4,674.6 L135.6,676.2 L136.3,675.4 L136.1,676.8 L138.8,676.0 L136.1,678.7 L136.9,680.0 L137.4,681.6 L139.9,681.9 L138.7,685.4 L139.6,686.9 L139.7,688.7 L141.0,687.6 L140.8,689.4 L142.3,688.9 L142.1,687.0 L143.9,686.1 L145.9,686.7 L146.3,687.8 L143.9,689.2 L144.9,691.0 L143.7,692.1 L143.6,697.1 L145.4,697.1 L146.6,691.2 L148.1,689.8 L149.5,690.7 L148.2,692.6 L148.9,694.1 L150.3,694.0 L150.0,691.9 L151.9,691.7 L150.3,691.2 L152.8,686.6 L151.5,686.9 L154.1,686.1 L155.0,688.0 L154.0,689.2 L154.3,690.0 L157.9,691.1 L155.9,691.1 L156.6,693.3 L158.8,692.8 L158.3,691.0 L160.1,689.0 L163.7,695.4 L162.8,698.9 L163.9,702.3 L165.7,703.8 L167.0,703.0 L166.7,704.1 L168.3,706.8 L162.0,707.7 L160.8,706.5 L161.4,704.5 L159.7,703.6 L150.9,704.4 L148.7,706.2 L149.4,707.5 L147.2,707.7 L147.3,709.4 L143.5,710.2 L142.7,712.6 L140.2,712.7 L137.2,716.1 L137.5,718.6 L139.3,718.7 L137.2,720.8 L137.8,723.9 L132.4,722.1 L125.6,723.7 L125.8,718.6 L123.1,717.1 L120.5,718.1 L119.3,714.9 L117.5,714.2 L117.9,712.3 L115.1,712.4 L115.4,708.9 L116.5,709.5 L117.2,706.9 L117.7,706.7 L118.7,708.8 L118.0,711.7 L118.6,710.9 L120.5,712.8 L119.8,716.1 L121.9,716.9 L123.4,713.9 L125.6,714.9 L126.5,719.6 L128.5,718.0 L129.3,714.7 L133.9,716.9 L135.3,714.9 L133.8,714.7 L133.6,712.7 L136.3,711.8 L135.3,709.9 L136.7,708.8 L133.4,708.8 L132.5,706.9 L132.2,708.3 L131.0,707.4 L126.1,709.9 L124.6,707.7 L123.1,709.0 L122.2,705.6 L125.4,707.1 L126.9,706.3 L125.9,704.7 L127.1,705.5 L127.5,704.9 L125.8,703.2 L127.3,704.2 L128.3,703.1 L126.5,701.4 L124.4,703.6 L124.6,702.7 L120.9,704.2 L120.0,703.2 L124.1,698.8 L122.1,695.0 L126.6,695.1 L129.6,691.6 L130.5,694.4 L129.2,695.8 L130.3,696.6 L129.4,696.4 L129.0,696.9 L131.4,696.6 L130.8,700.2 L133.3,698.9 L134.3,701.0 L134.5,698.8 L136.0,698.0 L135.2,698.1 L134.8,698.0 L134.8,697.9 L134.5,697.9 L134.4,698.1 L134.7,695.9 L137.8,694.7 L137.8,690.6 L136.3,689.0 L137.3,687.3 L139.6,687.4 L138.6,685.5 L136.8,686.0 L134.4,683.4 L137.2,681.9 L136.8,680.0 L135.3,681.8 L133.7,680.1 L131.3,680.9 L133.8,676.1 L128.2,668.3 L129.3,667.6 L128.7,666.3 Z"},{"name":"苗栗縣","d":"M500.6,358.9 L501.0,358.7 L500.6,358.9 L500.6,358.9 Z M500.2,359.4 L500.5,359.2 L500.3,359.6 L500.2,359.4 Z M683.9,349.0 L691.2,346.0 L691.4,348.1 L693.6,349.3 L691.9,352.3 L697.3,356.2 L697.4,357.8 L700.3,360.2 L700.7,363.0 L705.4,365.5 L705.4,367.7 L707.0,368.5 L705.3,374.2 L705.9,378.3 L700.3,381.6 L700.2,387.0 L697.1,390.2 L696.3,395.2 L690.7,396.9 L688.8,390.7 L684.3,390.5 L681.9,396.2 L679.5,396.4 L676.1,399.2 L674.4,403.9 L665.0,404.4 L659.3,411.5 L658.4,415.3 L653.9,415.2 L646.6,420.2 L644.6,417.7 L641.7,418.2 L640.7,420.9 L635.7,422.8 L634.4,427.3 L632.2,428.5 L628.4,427.7 L623.5,423.2 L617.9,414.6 L613.8,415.7 L610.5,413.3 L605.1,414.2 L601.7,412.0 L596.9,412.1 L594.6,410.7 L587.9,413.7 L590.0,425.2 L586.4,429.0 L573.9,428.7 L565.1,431.1 L559.5,430.3 L550.3,420.9 L542.4,419.9 L535.1,417.0 L524.0,407.4 L516.0,405.1 L516.1,403.6 L511.0,401.6 L501.0,388.4 L495.0,384.6 L492.8,378.8 L486.4,373.9 L488.7,372.0 L488.2,373.4 L489.3,373.3 L489.8,371.2 L490.8,372.3 L489.9,371.0 L495.3,366.1 L495.7,366.5 L496.8,366.5 L495.2,366.0 L497.4,365.8 L496.1,364.6 L502.3,357.8 L502.7,356.2 L502.1,356.8 L501.5,356.5 L503.4,352.3 L505.7,353.0 L503.0,352.1 L509.0,343.0 L517.4,319.5 L521.5,312.1 L526.3,309.7 L529.2,311.3 L531.9,308.9 L533.8,309.2 L533.6,305.8 L531.1,307.1 L537.9,295.7 L537.2,294.7 L538.5,295.4 L537.1,293.7 L539.4,293.7 L542.1,290.9 L557.8,288.1 L559.5,284.0 L566.9,276.7 L567.9,277.0 L566.7,276.0 L568.5,276.5 L570.6,267.5 L574.9,263.4 L580.1,264.5 L584.8,261.2 L587.9,268.6 L587.0,270.2 L592.7,270.4 L596.8,273.9 L599.4,272.5 L600.6,275.1 L604.0,272.4 L608.1,272.6 L607.7,277.8 L605.1,280.0 L604.4,282.8 L608.2,282.4 L608.8,286.6 L612.1,290.2 L613.5,289.9 L615.7,293.7 L620.2,293.1 L619.5,297.5 L625.4,298.7 L625.7,300.8 L631.6,304.0 L634.4,308.5 L638.1,306.0 L642.4,309.6 L645.2,317.9 L642.6,321.3 L640.9,327.9 L638.2,330.1 L636.1,329.5 L644.4,336.4 L643.6,340.9 L639.7,343.1 L641.4,352.3 L646.0,351.2 L650.5,353.0 L659.1,347.9 L663.7,349.2 L666.5,347.2 L668.5,349.4 L674.8,350.7 L678.5,348.7 L683.9,349.0 Z"},{"name":"嘉義市","d":"M416.1,724.9 L421.9,723.5 L421.9,720.5 L424.3,722.5 L424.3,720.1 L426.5,720.1 L430.0,721.1 L432.5,727.3 L434.4,727.0 L435.7,724.4 L439.0,724.9 L439.3,728.6 L445.2,730.7 L445.4,734.1 L447.9,737.4 L444.7,739.9 L443.1,744.6 L441.2,744.9 L436.8,741.2 L434.0,741.3 L428.4,747.7 L424.0,749.6 L422.7,748.1 L423.5,747.1 L420.7,744.9 L420.4,741.6 L415.6,741.9 L414.3,740.2 L408.3,741.0 L410.1,734.9 L408.2,733.5 L408.5,730.4 L406.8,730.2 L406.7,727.4 L410.5,727.4 L413.4,724.5 L413.2,727.5 L414.2,727.4 L416.1,724.9 Z"},{"name":"新竹縣","d":"M599.2,208.5 L607.1,190.8 L610.3,186.7 L614.2,188.5 L619.1,184.3 L623.3,186.5 L629.9,184.2 L636.7,187.9 L637.6,192.8 L636.6,199.6 L648.0,204.1 L654.2,202.5 L654.8,204.9 L653.7,206.8 L656.7,208.5 L663.3,209.9 L664.5,208.2 L670.2,208.9 L672.2,216.8 L668.2,222.5 L677.3,227.1 L676.4,228.8 L685.0,233.5 L686.6,232.6 L687.1,236.4 L692.2,234.7 L692.9,239.4 L700.4,235.9 L701.9,240.4 L706.2,241.8 L706.1,245.9 L709.8,247.3 L711.9,250.0 L720.4,253.1 L722.5,256.0 L719.2,264.4 L722.4,269.2 L719.7,278.4 L721.2,279.3 L725.8,277.4 L728.1,278.5 L733.1,284.3 L733.3,289.2 L738.2,288.8 L737.9,297.8 L739.7,301.5 L742.7,302.3 L740.1,307.8 L741.6,313.0 L749.8,319.2 L755.3,317.3 L758.5,324.2 L755.5,325.9 L752.4,330.8 L754.7,340.9 L751.0,343.1 L748.5,347.9 L745.1,348.0 L744.3,352.3 L739.6,356.8 L734.5,358.4 L732.2,363.9 L728.4,367.2 L724.2,375.2 L721.4,376.9 L705.9,378.3 L705.3,374.2 L707.0,368.5 L705.4,367.7 L705.4,365.5 L700.7,363.0 L700.3,360.2 L697.4,357.8 L697.3,356.2 L691.9,352.3 L693.6,349.3 L691.4,348.1 L691.0,345.9 L683.9,349.0 L678.5,348.7 L674.9,350.7 L668.5,349.4 L666.5,347.2 L663.7,349.2 L656.8,348.6 L650.5,353.0 L646.0,351.2 L641.4,352.3 L639.7,343.1 L643.6,340.9 L644.4,336.4 L636.1,329.5 L638.2,330.1 L640.9,327.9 L642.6,321.3 L645.2,317.9 L642.5,309.7 L638.1,306.0 L634.4,308.5 L631.6,304.0 L625.7,300.8 L625.4,298.7 L619.5,297.5 L620.2,293.1 L615.7,293.7 L613.5,289.9 L612.1,290.2 L608.8,286.6 L608.2,282.4 L604.4,282.8 L605.1,280.0 L607.7,277.8 L607.1,275.3 L608.7,274.3 L607.7,272.2 L604.0,272.4 L600.6,275.1 L599.4,272.5 L596.8,273.9 L594.5,272.0 L597.5,260.0 L602.1,259.6 L606.3,252.2 L609.6,252.9 L612.7,251.1 L610.9,249.2 L611.8,247.8 L614.3,246.4 L620.0,249.0 L623.8,255.4 L628.2,252.7 L623.8,241.4 L624.6,240.6 L623.8,239.6 L625.5,239.5 L619.5,233.0 L610.8,227.5 L601.3,226.3 L593.9,219.3 L593.8,215.9 L599.2,208.5 Z"},{"name":"新北市","d":"M802.0,51.1 L802.0,51.1 L802.0,51.2 L802.0,51.1 Z M801.4,51.3 L801.5,51.2 L801.4,51.4 L801.4,51.3 Z M801.8,51.3 L801.8,51.3 L801.9,51.3 L801.8,51.3 Z M801.6,51.4 L801.6,51.4 L801.6,51.4 L801.6,51.4 Z M801.1,51.5 L801.1,51.5 L801.0,51.6 L801.1,51.5 Z M801.9,51.7 L802.0,51.5 L802.0,51.7 L801.9,51.7 Z M802.3,52.1 L802.5,52.1 L802.5,52.1 L802.3,52.1 Z M792.5,54.7 L792.5,54.7 L792.5,54.8 L792.5,54.7 Z M792.2,54.9 L792.2,54.8 L792.2,54.9 L792.2,54.9 Z M792.8,54.9 L792.8,54.9 L792.8,54.9 L792.8,54.9 Z M791.9,54.9 L791.9,54.9 L791.9,54.9 L791.9,54.9 Z M791.6,55.0 L791.7,55.0 L791.6,55.0 L791.6,55.0 Z M791.6,55.2 L791.6,55.2 L791.6,55.2 L791.6,55.2 Z M858.1,82.6 L858.1,82.6 L858.1,82.6 L858.1,82.6 Z M858.4,82.8 L858.6,82.8 L858.3,83.0 L858.4,82.8 Z M857.9,83.3 L858.2,83.2 L857.9,83.5 L857.9,83.3 Z M857.7,83.3 L857.8,83.3 L857.7,83.4 L857.7,83.3 Z M856.7,83.3 L856.8,83.3 L856.4,83.6 L856.7,83.3 Z M856.0,84.3 L856.1,84.4 L856.1,84.4 L856.0,84.3 Z M855.8,84.5 L855.9,84.5 L855.8,84.5 L855.8,84.5 Z M856.7,87.0 L857.2,86.8 L856.7,87.0 L856.7,87.0 Z M856.3,87.4 L856.4,87.5 L856.3,87.5 L856.3,87.4 Z M855.8,87.8 L855.9,88.0 L855.7,88.0 L855.8,87.8 Z M849.9,88.0 L850.0,88.0 L850.1,88.1 L849.9,88.0 Z M855.5,88.2 L855.6,88.2 L855.5,88.2 L855.5,88.2 Z M855.0,89.1 L855.2,89.1 L854.8,89.3 L855.0,89.1 Z M758.4,93.3 L758.5,93.3 L758.3,93.3 L758.4,93.3 Z M905.3,115.8 L905.4,115.8 L905.3,115.8 L905.3,115.8 Z M932.1,116.1 L930.9,116.4 L932.2,116.0 L932.1,116.1 Z M907.1,116.1 L907.4,116.2 L907.4,116.3 L907.1,116.1 Z M913.0,116.7 L913.1,116.8 L913.0,116.9 L913.0,116.7 Z M917.2,116.8 L917.3,116.8 L917.3,116.9 L917.2,116.8 Z M917.5,117.1 L917.6,117.0 L917.5,117.1 L917.5,117.1 Z M918.8,117.2 L918.8,117.2 L918.8,117.2 L918.8,117.2 Z M912.3,117.3 L912.4,117.2 L912.4,117.4 L912.3,117.3 Z M917.7,117.3 L917.7,117.3 L917.7,117.4 L917.7,117.3 Z M932.7,127.9 L932.8,127.9 L932.8,128.0 L932.7,127.9 Z M932.7,128.1 L932.8,128.1 L932.8,128.1 L932.7,128.1 Z M932.5,128.3 L932.6,128.4 L932.5,128.4 L932.5,128.3 Z M931.8,129.5 L931.9,129.7 L931.8,129.7 L931.8,129.5 Z M931.6,129.8 L931.7,129.8 L931.6,129.8 L931.6,129.8 Z M936.4,139.8 L936.6,139.9 L936.4,139.8 L936.4,139.8 Z M936.9,142.9 L937.0,142.9 L937.0,143.0 L936.9,142.9 Z M937.2,143.1 L937.2,143.1 L937.2,143.1 L937.2,143.1 Z M954.8,155.0 L954.9,154.8 L954.9,155.0 L954.8,155.0 Z M955.1,155.4 L955.2,155.5 L955.1,155.4 L955.1,155.4 Z M947.9,155.6 L947.9,155.6 L947.9,155.6 L947.9,155.6 Z M962.0,158.3 L962.0,158.4 L961.9,158.3 L962.0,158.3 Z M962.8,160.0 L963.0,159.9 L962.8,160.1 L962.8,160.0 Z M962.6,160.6 L962.7,160.7 L962.6,160.7 L962.6,160.6 Z M957.9,164.8 L958.1,164.8 L957.9,164.9 L957.9,164.8 Z M957.5,164.9 L957.6,165.0 L957.5,164.9 L957.5,164.9 Z M955.7,166.3 L955.8,166.3 L955.8,166.3 L955.7,166.3 Z M955.4,166.8 L955.6,166.7 L955.4,166.9 L955.4,166.8 Z M955.1,167.5 L955.3,167.7 L955.3,167.9 L955.1,167.5 Z M949.2,171.0 L949.3,171.0 L949.2,171.0 L949.2,171.0 Z M889.5,201.7 L885.5,205.6 L886.7,211.3 L884.0,212.6 L883.3,214.7 L880.9,214.5 L878.3,217.9 L873.1,219.3 L867.9,218.4 L862.3,223.5 L856.1,226.1 L856.0,227.9 L853.1,229.8 L853.4,233.0 L848.5,233.8 L846.7,232.4 L843.9,235.1 L839.3,233.9 L838.4,235.7 L831.9,235.8 L831.7,241.0 L820.3,243.7 L822.2,249.6 L819.2,256.0 L821.6,258.5 L820.1,259.9 L821.3,261.7 L820.8,265.5 L822.1,266.3 L818.5,269.1 L815.5,268.3 L814.3,272.9 L812.8,271.4 L803.5,274.5 L801.6,276.7 L801.2,281.0 L798.2,280.8 L796.8,282.9 L792.7,282.5 L786.2,286.7 L781.7,286.5 L779.6,282.2 L779.7,278.1 L771.5,274.5 L768.3,266.9 L766.0,265.4 L762.2,253.4 L771.2,244.4 L771.5,242.5 L769.9,242.8 L767.1,240.5 L766.8,234.6 L764.3,233.4 L762.3,229.6 L760.1,229.6 L759.6,225.8 L755.2,222.8 L750.1,223.2 L745.1,226.7 L738.7,222.6 L732.2,222.7 L732.6,221.0 L737.9,220.7 L739.8,219.2 L735.3,214.0 L738.5,211.5 L735.5,209.1 L734.3,204.4 L731.4,204.8 L731.3,201.8 L729.1,203.1 L726.8,201.5 L728.8,198.2 L725.9,195.5 L728.3,192.8 L733.5,190.9 L727.4,191.1 L727.8,189.9 L725.3,187.2 L730.7,184.5 L729.5,183.2 L729.5,174.6 L727.9,174.3 L729.3,172.2 L734.5,170.7 L736.1,172.0 L743.7,172.8 L749.2,169.4 L748.8,165.7 L752.2,166.6 L755.2,164.5 L754.1,161.5 L751.2,159.6 L751.7,158.2 L758.4,156.9 L753.6,152.8 L754.6,149.9 L751.0,148.4 L754.4,147.9 L753.6,147.6 L755.3,147.0 L752.1,145.7 L754.5,144.8 L751.7,143.4 L748.9,144.4 L749.3,142.3 L751.1,141.3 L750.2,140.4 L738.7,139.7 L735.8,137.7 L738.2,136.6 L737.0,135.3 L736.3,136.4 L733.8,136.3 L736.3,134.5 L734.4,134.0 L736.8,133.2 L733.1,132.7 L728.4,129.4 L720.8,127.8 L719.3,124.9 L716.9,125.6 L713.9,122.9 L714.2,120.1 L717.9,119.2 L718.6,117.0 L719.3,117.9 L718.7,116.8 L719.6,117.8 L731.2,117.4 L749.6,109.5 L750.7,108.8 L750.0,107.1 L750.8,108.6 L752.7,107.5 L752.1,106.2 L752.3,104.8 L752.8,107.1 L754.9,104.6 L753.5,103.3 L752.7,104.1 L753.5,103.3 L751.3,101.1 L755.0,104.5 L757.4,102.4 L756.1,101.1 L757.4,102.3 L758.6,101.1 L756.4,98.9 L756.1,95.8 L758.7,95.8 L758.9,95.2 L755.9,95.2 L761.1,92.0 L760.3,91.2 L762.7,87.3 L768.1,81.4 L768.4,78.2 L770.2,77.0 L770.6,71.8 L772.7,69.8 L777.3,70.3 L780.0,68.2 L781.4,63.5 L792.2,57.6 L791.7,55.1 L792.9,55.0 L793.4,57.1 L798.0,56.9 L800.5,55.0 L799.8,53.3 L801.4,51.4 L804.9,54.6 L811.3,54.7 L812.0,52.4 L815.0,52.1 L818.6,54.5 L822.3,54.7 L821.2,55.0 L833.6,64.6 L834.7,74.2 L837.7,77.5 L839.8,77.7 L838.8,78.6 L840.0,77.9 L839.1,76.7 L840.8,76.6 L841.5,78.1 L840.0,80.2 L844.3,86.1 L847.7,88.2 L849.7,86.9 L849.9,88.4 L852.6,85.9 L852.7,87.8 L858.0,82.7 L854.9,86.3 L854.4,87.6 L855.6,88.0 L852.3,92.5 L854.8,96.5 L856.5,96.5 L856.2,95.5 L860.4,98.2 L849.7,105.7 L832.2,111.6 L834.4,114.9 L837.8,116.2 L840.9,124.8 L839.8,125.9 L843.0,129.7 L848.4,133.0 L850.9,131.0 L850.2,134.5 L853.4,137.2 L857.2,138.8 L861.6,138.6 L867.7,144.1 L872.2,144.4 L876.9,141.8 L879.4,142.5 L883.4,137.8 L881.2,134.9 L878.4,134.5 L878.0,126.3 L876.6,123.4 L874.6,122.9 L880.4,121.9 L882.7,119.0 L890.0,121.8 L891.4,119.4 L889.9,116.7 L892.6,118.4 L893.5,117.0 L892.9,113.2 L895.4,114.3 L900.9,113.1 L898.0,115.8 L899.2,118.7 L901.4,118.4 L901.7,116.2 L906.1,115.7 L906.5,116.2 L911.7,117.4 L912.5,117.5 L913.2,116.7 L914.5,118.3 L917.3,117.0 L918.2,117.9 L925.6,119.3 L927.7,117.7 L931.7,118.1 L931.6,116.5 L934.4,115.4 L934.2,117.8 L930.5,121.5 L933.7,121.5 L934.4,125.2 L932.9,125.5 L930.6,130.9 L931.5,135.6 L932.7,135.6 L935.0,139.1 L937.0,140.4 L934.9,142.4 L936.9,143.0 L935.6,149.0 L937.2,151.8 L942.4,156.6 L944.2,156.0 L943.5,156.0 L943.3,155.7 L947.6,155.9 L952.5,154.3 L956.7,156.4 L957.0,156.2 L957.3,159.6 L959.8,156.5 L961.2,158.9 L962.4,158.5 L962.1,163.0 L959.1,163.4 L949.1,170.7 L947.1,168.5 L941.5,168.5 L937.7,171.3 L927.1,173.7 L922.2,177.9 L907.9,179.0 L905.2,184.8 L910.2,192.2 L902.7,199.8 L898.1,200.6 L895.7,199.2 L893.4,201.2 L889.5,201.7 Z M798.0,169.0 L800.7,165.9 L801.3,168.3 L803.8,168.5 L804.1,170.2 L806.7,169.1 L809.7,177.3 L815.6,176.6 L823.5,178.7 L829.9,175.6 L822.8,172.3 L823.7,167.7 L822.3,166.2 L823.1,163.7 L821.6,162.4 L822.1,158.6 L826.1,156.2 L831.0,157.6 L834.1,154.5 L838.9,156.0 L845.5,154.4 L845.6,152.9 L844.1,152.6 L839.0,153.6 L829.6,147.8 L828.6,145.1 L830.0,142.8 L831.3,143.2 L828.5,140.1 L832.6,132.9 L832.0,128.1 L828.2,125.1 L822.1,123.0 L821.5,121.3 L825.7,115.2 L824.6,115.0 L824.9,112.8 L819.3,106.9 L819.5,102.7 L815.1,101.4 L817.3,97.7 L816.4,95.8 L817.4,91.1 L813.3,90.8 L809.2,85.2 L807.5,85.9 L806.6,89.6 L804.0,90.7 L802.7,93.8 L796.1,96.9 L795.4,100.6 L789.5,99.1 L784.3,107.3 L776.8,114.7 L776.5,117.5 L774.4,118.0 L775.2,120.5 L773.8,123.2 L774.9,124.8 L784.7,127.6 L788.5,131.4 L790.7,136.1 L789.7,146.0 L783.9,151.8 L784.7,158.6 L787.0,160.6 L791.8,156.0 L795.4,156.9 L799.8,161.5 L798.0,169.0 Z"},{"name":"花蓮縣","d":"M790.7,724.2 L790.9,724.2 L790.8,724.2 L790.7,724.2 Z M792.7,729.9 L793.2,730.0 L792.7,730.1 L792.7,729.9 Z M791.8,729.9 L791.8,730.0 L791.7,730.1 L791.8,729.9 Z M794.0,733.8 L793.6,733.5 L794.3,733.2 L794.0,733.8 Z M746.6,801.7 L746.6,813.4 L740.2,819.8 L740.8,822.9 L737.9,827.8 L739.5,830.6 L735.8,833.1 L736.0,836.0 L731.9,847.8 L727.8,847.5 L725.8,852.6 L729.2,857.4 L726.8,862.9 L727.4,870.7 L725.3,873.4 L716.9,873.5 L710.4,877.9 L707.6,875.6 L708.6,871.8 L705.3,867.3 L702.4,865.2 L698.7,866.3 L696.1,862.3 L689.6,860.4 L689.8,856.5 L685.2,848.8 L684.8,843.8 L681.8,838.1 L677.0,835.7 L672.0,837.3 L669.8,839.9 L667.1,839.8 L664.6,838.8 L661.1,830.8 L653.3,830.6 L648.6,826.8 L643.6,827.0 L638.1,814.8 L638.0,809.7 L636.0,805.6 L630.0,801.7 L626.4,803.1 L627.7,800.6 L632.5,798.8 L633.5,792.5 L625.9,787.8 L623.6,783.1 L620.2,784.8 L617.0,780.9 L612.2,780.0 L612.1,777.2 L616.6,771.1 L619.3,770.2 L617.1,767.6 L617.9,766.3 L626.4,763.1 L625.2,759.0 L626.8,756.1 L621.1,752.1 L628.7,747.2 L634.5,745.4 L636.7,741.9 L630.1,736.6 L635.1,731.5 L635.3,728.6 L638.1,727.1 L640.2,720.0 L646.9,721.7 L650.2,718.8 L652.3,719.8 L657.1,718.8 L663.2,721.3 L666.4,717.3 L668.6,716.8 L667.2,714.2 L668.6,710.2 L666.9,706.5 L668.9,704.3 L670.7,704.6 L671.8,702.0 L671.8,700.8 L669.0,699.5 L669.4,694.4 L674.0,694.2 L677.9,695.9 L678.4,693.2 L683.4,689.2 L687.7,691.0 L690.1,689.2 L693.6,680.7 L693.7,674.9 L697.8,665.9 L696.6,660.5 L699.0,656.8 L699.6,652.5 L699.0,642.8 L695.6,640.6 L695.3,635.2 L696.6,632.9 L692.9,632.1 L687.7,628.4 L688.4,627.2 L687.0,624.7 L695.9,618.8 L694.4,613.5 L698.9,606.2 L699.0,599.2 L702.3,594.8 L703.7,588.9 L707.9,587.0 L707.2,584.1 L709.0,582.9 L708.3,577.5 L706.5,575.8 L711.6,573.2 L710.1,558.7 L712.2,552.1 L710.7,548.6 L707.5,548.3 L706.1,542.1 L714.9,524.4 L714.1,518.9 L718.3,515.4 L719.7,516.1 L727.8,507.5 L726.3,503.7 L729.5,497.3 L728.4,495.8 L725.2,495.6 L718.2,489.6 L713.4,488.4 L714.6,482.2 L713.1,480.1 L715.8,480.0 L715.1,472.8 L722.4,471.6 L728.5,465.8 L736.7,464.2 L736.7,460.2 L734.5,455.2 L737.7,451.1 L737.8,447.7 L740.7,447.5 L742.7,444.5 L748.9,443.4 L747.4,434.1 L750.8,430.4 L752.8,430.8 L755.2,427.7 L755.8,423.5 L761.6,423.7 L765.8,418.4 L766.2,408.7 L768.2,404.5 L771.8,402.2 L788.0,412.0 L790.1,410.6 L796.3,410.6 L800.0,412.8 L804.2,412.6 L811.5,419.6 L814.9,419.4 L819.4,421.6 L822.0,420.6 L825.0,423.2 L824.8,420.3 L821.5,414.9 L822.7,414.1 L824.4,415.9 L825.7,413.5 L829.0,414.1 L829.5,409.7 L830.8,411.9 L832.4,411.3 L832.8,414.1 L834.2,413.7 L833.7,410.2 L835.2,408.9 L832.2,408.2 L830.0,403.0 L833.7,400.3 L833.5,401.8 L835.0,401.8 L839.7,408.1 L840.4,404.3 L841.4,407.2 L844.7,406.9 L846.7,410.5 L848.4,410.5 L848.7,412.6 L852.4,411.5 L853.4,414.2 L872.7,418.2 L877.9,421.5 L882.7,421.3 L882.6,422.6 L874.6,432.9 L872.2,441.9 L867.1,447.1 L863.1,448.3 L859.4,454.6 L848.6,461.2 L845.2,465.5 L843.1,474.8 L845.9,483.6 L844.9,487.7 L842.8,487.4 L844.7,488.8 L841.3,494.1 L832.7,500.8 L829.2,507.1 L828.3,513.6 L829.7,520.2 L833.7,528.3 L838.0,532.3 L839.2,536.2 L836.8,540.2 L834.9,546.9 L832.6,550.8 L837.1,539.2 L836.1,537.3 L834.8,543.5 L830.5,546.7 L831.8,549.3 L829.8,547.4 L825.1,555.4 L826.9,564.3 L824.8,570.9 L822.3,591.7 L818.7,603.7 L817.8,603.6 L813.7,613.3 L812.7,621.6 L813.7,629.3 L809.2,640.9 L805.5,646.0 L805.5,650.7 L807.0,652.2 L802.7,666.7 L803.4,669.0 L800.9,671.0 L799.2,678.1 L797.6,697.8 L792.4,707.0 L789.5,719.5 L791.1,728.5 L790.3,729.1 L790.8,730.1 L790.9,728.8 L791.4,730.2 L793.2,730.1 L793.3,733.2 L789.4,740.0 L787.2,751.5 L782.6,753.2 L779.4,749.2 L776.0,749.9 L770.4,748.1 L768.0,752.0 L765.7,752.2 L761.2,756.7 L754.2,770.0 L755.7,776.7 L762.0,779.4 L761.8,781.3 L757.6,784.8 L754.2,793.3 L750.8,794.3 L750.0,798.0 L746.6,801.7 Z"},{"name":"高雄市","d":"M429.0,1000.2 L429.5,1020.2 L427.1,1030.5 L424.0,1035.2 L421.9,1055.9 L423.0,1061.3 L426.2,1065.3 L425.6,1075.9 L418.2,1095.3 L418.6,1110.8 L410.2,1110.8 L409.6,1109.3 L409.2,1110.6 L409.2,1108.9 L403.6,1104.7 L404.2,1104.0 L404.3,1102.9 L402.9,1104.3 L391.4,1094.6 L389.6,1095.5 L387.9,1093.9 L389.1,1092.7 L388.0,1091.1 L386.2,1092.3 L384.7,1091.1 L387.4,1089.9 L387.0,1089.3 L384.6,1091.0 L386.9,1089.0 L381.0,1084.5 L379.8,1084.9 L378.3,1085.2 L376.5,1085.0 L375.5,1084.4 L379.3,1085.0 L381.8,1083.0 L378.8,1080.3 L376.2,1083.0 L378.4,1080.6 L377.2,1078.0 L360.6,1057.5 L363.4,1054.8 L359.3,1047.7 L358.9,1043.4 L363.7,1035.5 L363.4,1031.3 L360.3,1030.4 L360.0,1029.9 L360.0,1029.2 L363.8,1030.8 L365.7,1034.6 L367.2,1033.2 L366.1,1031.7 L367.0,1030.6 L366.1,1026.8 L367.2,1026.8 L367.3,1024.6 L363.8,1023.9 L363.4,1028.3 L362.3,1029.0 L361.0,1028.7 L362.9,1027.8 L361.1,1022.4 L362.0,1021.8 L360.8,1021.8 L355.7,1009.1 L352.3,1004.3 L353.6,1004.5 L352.2,1003.9 L352.8,1002.6 L346.4,987.6 L340.9,987.6 L339.3,986.8 L338.2,984.5 L339.4,986.8 L340.9,987.6 L342.8,987.2 L342.8,987.1 L341.4,987.3 L341.1,987.2 L340.7,986.1 L342.8,987.0 L342.5,984.9 L344.2,984.4 L344.6,982.4 L341.6,973.0 L338.1,973.9 L340.9,972.9 L340.4,972.8 L339.6,971.8 L341.1,972.3 L340.3,970.7 L339.2,971.4 L340.0,969.4 L338.5,968.8 L339.6,967.4 L339.2,967.5 L338.0,966.8 L339.9,966.2 L338.2,965.7 L338.7,963.4 L333.0,947.7 L338.9,944.1 L347.7,948.5 L351.7,945.7 L352.9,950.0 L356.3,950.8 L360.2,954.2 L361.8,953.9 L361.9,951.4 L366.7,953.8 L368.9,953.5 L368.4,950.5 L370.6,950.3 L380.9,952.2 L382.8,954.0 L384.5,951.9 L387.1,956.1 L392.9,955.6 L393.8,956.8 L397.0,952.9 L396.4,951.6 L400.9,949.6 L400.5,947.5 L404.0,944.1 L405.8,945.2 L409.9,943.7 L413.4,947.4 L415.9,946.1 L425.0,923.1 L428.6,922.9 L429.2,918.1 L431.4,918.0 L431.1,913.3 L437.8,913.5 L439.3,908.2 L446.0,903.8 L455.1,893.6 L463.5,888.7 L470.3,880.5 L479.5,860.5 L483.2,857.7 L484.8,853.3 L489.7,850.7 L489.2,849.1 L491.5,848.9 L493.3,845.9 L491.8,842.8 L498.5,832.8 L496.2,828.9 L495.8,821.1 L492.3,813.5 L494.0,811.0 L494.1,803.5 L495.3,803.0 L497.0,805.3 L499.2,803.5 L505.7,806.5 L513.4,807.8 L515.8,800.2 L517.8,798.7 L524.0,799.9 L524.6,796.8 L531.7,791.9 L531.6,790.3 L533.7,788.3 L533.4,785.4 L542.2,786.1 L545.2,780.5 L548.1,779.2 L549.2,775.6 L556.6,775.1 L558.5,769.6 L562.0,766.4 L561.1,765.2 L564.9,759.9 L564.9,756.9 L577.7,751.4 L579.5,747.0 L580.6,747.2 L582.5,744.1 L589.6,742.3 L592.1,743.6 L594.9,740.5 L598.9,740.4 L605.2,737.6 L619.5,741.1 L622.1,745.2 L620.2,747.2 L621.9,751.3 L621.1,752.1 L626.8,756.1 L625.2,759.0 L626.4,763.0 L617.8,766.4 L617.1,767.6 L619.3,770.2 L616.6,771.1 L612.6,775.5 L612.2,779.9 L617.6,781.3 L620.2,784.8 L623.6,783.1 L625.9,787.8 L633.5,792.5 L633.2,796.8 L632.4,798.9 L627.7,800.6 L624.9,804.3 L620.1,804.8 L612.1,809.4 L607.1,808.8 L595.3,822.7 L591.3,822.8 L587.7,825.2 L586.3,829.1 L586.3,836.1 L584.3,839.7 L586.3,843.2 L586.1,846.2 L581.8,848.3 L580.6,854.3 L574.2,857.8 L577.4,860.4 L578.2,868.6 L577.1,869.8 L578.6,873.3 L577.3,881.2 L571.7,892.2 L575.3,896.7 L575.4,901.0 L569.2,902.9 L568.7,911.6 L565.5,912.6 L564.7,916.6 L562.3,917.9 L562.1,920.6 L559.1,921.9 L558.3,925.8 L555.1,928.9 L556.4,932.4 L555.4,938.9 L559.3,947.5 L557.7,950.5 L561.8,958.8 L568.4,960.2 L570.2,962.4 L568.2,965.8 L571.8,968.0 L570.1,973.4 L566.2,968.0 L564.2,970.1 L560.8,965.5 L556.6,964.7 L548.3,970.5 L545.6,970.1 L545.4,974.2 L540.6,976.4 L535.6,971.2 L532.5,965.3 L522.1,959.3 L515.0,959.4 L510.3,965.3 L506.3,966.0 L504.0,968.5 L500.0,967.1 L499.1,959.6 L495.8,960.7 L494.6,957.6 L481.0,962.2 L463.1,979.0 L455.3,977.2 L448.2,978.9 L444.0,977.7 L442.2,975.6 L436.6,975.3 L434.0,978.1 L432.4,989.5 L429.0,1000.2 Z"},{"name":"彰化縣","d":"M362.9,588.2 L363.5,587.7 L362.8,588.5 L362.9,588.2 Z M365.2,587.9 L365.8,587.9 L365.7,588.2 L365.2,587.9 Z M366.3,588.7 L366.1,588.5 L366.3,588.6 L366.3,588.7 Z M363.9,589.3 L364.1,589.3 L363.8,589.4 L363.9,589.3 Z M364.4,589.2 L364.3,589.4 L364.1,589.8 L364.4,589.2 Z M363.8,589.6 L363.9,589.6 L363.8,589.8 L363.8,589.6 Z M488.9,565.0 L492.0,567.9 L490.6,569.5 L491.0,571.9 L489.2,572.8 L490.9,574.0 L489.9,575.6 L491.1,576.3 L491.0,579.3 L490.3,580.8 L488.5,580.7 L489.3,582.5 L487.9,587.1 L486.0,588.8 L486.8,591.8 L488.7,592.8 L487.2,596.0 L485.8,595.8 L487.1,596.8 L484.5,599.2 L485.1,600.2 L488.1,598.6 L489.1,599.8 L487.7,600.6 L490.7,601.6 L487.5,602.5 L487.3,603.3 L491.9,602.1 L490.9,602.7 L492.9,604.9 L491.9,604.7 L490.7,604.7 L496.6,609.7 L505.4,607.2 L506.3,612.1 L508.0,613.1 L493.8,619.7 L488.8,618.1 L474.6,617.4 L462.4,614.0 L447.8,614.2 L428.3,607.9 L421.8,603.1 L413.9,604.5 L400.2,603.7 L396.0,605.8 L378.8,606.8 L360.9,601.7 L356.1,598.5 L362.1,591.7 L362.9,588.9 L363.9,590.3 L365.1,588.3 L367.8,589.4 L371.5,586.3 L382.5,563.4 L377.5,561.6 L384.1,551.9 L386.4,543.4 L392.8,542.9 L393.9,535.2 L399.2,527.7 L399.2,527.7 L398.8,527.3 L397.9,526.1 L400.1,527.3 L400.6,524.4 L403.5,522.8 L402.1,521.7 L404.1,522.6 L412.7,518.5 L402.8,517.6 L402.6,510.6 L409.1,507.1 L419.7,507.9 L422.4,505.6 L421.0,504.9 L422.5,504.2 L421.0,503.7 L422.9,493.8 L416.4,493.8 L414.5,500.6 L408.4,499.4 L406.4,502.8 L403.5,503.7 L411.7,492.1 L415.2,489.8 L414.1,488.9 L415.2,489.6 L417.2,488.0 L423.8,479.8 L432.3,478.8 L433.6,477.2 L431.7,476.2 L434.8,472.7 L433.5,472.1 L433.4,472.1 L434.2,470.8 L433.5,472.1 L434.8,472.6 L439.9,465.2 L447.6,469.2 L453.6,483.4 L452.9,487.0 L460.4,495.6 L483.4,500.8 L485.5,511.0 L487.9,513.5 L487.2,519.8 L488.8,524.9 L487.8,528.0 L491.5,527.7 L494.5,529.6 L495.1,526.6 L506.2,534.1 L503.2,535.6 L504.1,537.1 L492.2,536.5 L491.7,541.2 L496.4,545.4 L495.2,553.1 L491.7,557.1 L489.8,555.7 L488.4,555.7 L490.7,556.7 L488.5,557.3 L492.1,563.5 L491.1,562.9 L488.9,565.0 Z"},{"name":"嘉義縣","d":"M319.4,750.8 L320.0,751.1 L320.2,751.4 L319.4,750.8 Z M319.3,755.8 L319.4,755.6 L319.9,756.5 L319.3,755.8 Z M321.6,760.0 L324.3,767.6 L324.1,767.8 L322.8,765.2 L321.6,760.0 Z M324.1,734.9 L323.8,734.9 L323.9,734.8 L324.1,734.9 Z M323.7,735.2 L323.7,735.3 L323.7,735.3 L323.7,735.2 Z M320.9,735.5 L321.1,735.6 L320.9,735.5 L320.9,735.5 Z M321.5,735.9 L321.6,735.9 L321.6,736.0 L321.5,735.9 Z M321.9,736.2 L321.9,736.2 L321.9,736.3 L321.9,736.2 Z M497.0,805.3 L495.3,803.0 L494.1,803.6 L494.0,811.0 L492.3,813.5 L495.8,821.1 L496.1,828.7 L497.4,830.4 L488.9,828.5 L482.5,831.0 L478.2,828.6 L476.6,824.6 L474.5,830.4 L471.7,834.0 L467.2,831.6 L463.7,833.0 L459.0,829.1 L453.8,827.9 L451.3,824.8 L454.3,822.5 L455.9,818.8 L451.8,812.6 L452.3,806.4 L453.8,803.7 L452.5,797.6 L458.5,791.5 L456.3,788.3 L446.5,785.2 L446.4,781.5 L447.5,782.2 L449.0,780.8 L446.4,776.1 L440.8,774.6 L439.2,775.9 L439.4,772.1 L444.4,769.3 L443.0,766.6 L441.3,766.1 L437.7,769.1 L435.6,765.2 L424.1,759.3 L417.3,763.2 L416.0,760.6 L413.2,759.4 L403.9,763.2 L392.7,764.1 L387.6,769.7 L384.0,770.6 L381.1,768.8 L379.8,769.8 L379.8,773.7 L373.5,773.7 L371.1,776.8 L371.2,783.1 L368.3,784.1 L364.8,781.9 L362.5,785.3 L364.8,785.2 L364.7,786.7 L361.4,790.1 L354.6,791.9 L348.8,803.5 L343.7,805.2 L337.6,801.5 L336.7,803.3 L337.9,805.6 L334.7,805.3 L330.8,799.4 L324.3,797.0 L323.5,794.2 L318.3,790.8 L313.4,786.9 L313.2,786.7 L314.7,786.7 L313.2,786.0 L315.1,781.5 L320.4,774.3 L326.7,773.7 L326.8,772.1 L323.5,773.3 L323.9,771.0 L322.5,771.0 L322.1,772.8 L322.2,770.4 L320.8,770.2 L325.2,769.0 L326.6,772.0 L327.2,772.1 L326.9,770.7 L330.0,767.0 L328.5,766.5 L327.8,762.2 L325.8,762.9 L325.0,765.0 L324.2,762.2 L324.2,755.8 L326.5,754.2 L324.1,754.9 L324.6,754.1 L322.9,753.7 L323.3,750.1 L326.3,746.4 L324.7,746.1 L325.2,743.9 L320.5,746.1 L320.5,744.7 L319.4,746.6 L318.6,745.1 L322.6,742.0 L322.6,736.9 L326.4,732.9 L326.2,730.3 L331.1,730.7 L331.3,730.0 L327.1,728.8 L315.7,731.2 L313.9,728.6 L313.9,720.5 L315.8,719.3 L321.8,720.4 L323.0,719.1 L327.2,721.0 L330.1,720.5 L335.0,723.2 L341.4,722.0 L349.5,725.3 L354.3,724.3 L357.8,721.3 L356.6,710.5 L360.9,709.7 L363.4,714.4 L366.3,715.4 L367.9,710.6 L372.8,707.9 L372.6,703.5 L379.6,702.7 L378.5,698.9 L385.3,699.1 L387.4,697.3 L387.8,692.2 L396.3,691.3 L398.8,686.5 L403.5,685.7 L405.6,681.7 L411.3,679.3 L410.9,677.1 L412.4,676.8 L412.7,680.0 L415.8,681.4 L417.5,680.0 L419.0,682.7 L423.0,681.2 L422.5,679.8 L425.7,678.0 L428.6,677.9 L427.9,679.2 L429.0,679.5 L436.8,678.3 L437.5,677.1 L440.4,677.9 L440.9,675.9 L442.4,677.0 L446.0,676.2 L448.3,682.2 L457.4,691.4 L464.1,692.0 L464.7,693.5 L469.1,693.9 L472.7,696.1 L475.6,694.8 L485.6,695.4 L487.2,693.1 L495.8,691.9 L496.1,695.6 L494.1,698.4 L496.6,699.8 L503.2,697.5 L505.3,700.5 L511.3,698.3 L516.6,698.6 L517.1,700.3 L519.6,701.0 L525.9,700.5 L523.8,691.8 L524.7,690.5 L522.1,688.0 L523.8,685.5 L531.6,683.9 L546.2,690.5 L553.8,689.5 L554.7,693.0 L556.7,694.5 L554.7,697.8 L555.0,703.5 L551.0,709.7 L550.9,713.4 L554.9,718.9 L555.8,727.5 L559.2,736.5 L561.4,737.8 L569.7,736.9 L575.6,739.1 L577.6,736.1 L583.2,735.9 L593.0,738.0 L595.1,737.0 L598.7,739.3 L602.1,738.4 L598.9,740.4 L594.8,740.6 L592.1,743.6 L589.6,742.3 L582.5,744.1 L580.6,747.2 L579.5,747.0 L577.7,751.4 L565.1,756.8 L564.9,759.9 L561.1,765.2 L562.0,766.4 L558.5,769.6 L556.6,775.1 L549.2,775.6 L548.1,779.2 L545.2,780.5 L542.2,786.1 L533.4,785.4 L533.7,788.3 L531.6,790.3 L531.7,791.9 L524.6,796.8 L524.0,799.9 L517.8,798.7 L515.8,800.2 L513.4,807.8 L505.7,806.5 L499.2,803.5 L497.0,805.3 Z M408.3,741.0 L414.3,740.2 L415.6,741.9 L420.4,741.6 L420.7,744.9 L423.4,747.0 L422.7,748.1 L424.0,749.6 L428.4,747.7 L434.0,741.3 L436.8,741.2 L441.2,744.9 L443.1,744.6 L444.7,739.9 L448.0,736.6 L445.4,734.1 L445.2,730.7 L439.4,728.8 L439.0,724.9 L435.7,724.4 L432.9,727.4 L429.9,721.0 L424.3,720.1 L424.4,722.4 L421.9,720.5 L421.8,723.6 L416.1,724.9 L414.5,727.3 L413.2,727.5 L413.4,724.5 L410.5,727.4 L406.7,727.4 L406.8,730.2 L408.5,730.4 L408.2,733.5 L410.1,734.9 L408.3,741.0 Z"},{"name":"新竹市","d":"M579.7,243.5 L589.5,222.9 L586.8,219.7 L590.3,222.4 L591.0,220.4 L589.6,221.2 L589.4,220.3 L586.7,219.0 L587.2,218.9 L592.0,219.6 L593.7,222.8 L594.5,219.5 L601.3,226.3 L610.8,227.5 L612.5,229.6 L616.9,230.9 L625.5,239.5 L623.8,239.6 L624.6,240.6 L623.8,241.4 L627.9,253.4 L623.8,255.4 L621.3,250.1 L614.3,246.4 L610.9,249.2 L612.7,251.1 L609.6,252.9 L606.3,252.2 L602.1,259.6 L597.5,260.0 L594.5,271.9 L592.7,270.4 L587.0,270.1 L587.9,268.6 L585.0,261.3 L580.7,264.4 L575.8,264.2 L574.9,263.4 L576.6,260.2 L582.1,254.2 L579.3,248.6 L579.7,243.5 Z"}],"side_paths":[{"name":"連江縣","d":"M226.9,65.0 L226.7,65.1 L226.8,65.3 L226.6,65.3 L226.8,65.5 L226.6,65.7 L226.5,66.2 L226.0,66.4 L225.7,67.2 L225.3,67.5 L225.0,67.0 L224.6,67.1 L224.4,67.3 L224.6,67.4 L224.5,67.8 L224.1,67.9 L224.1,68.2 L223.9,68.2 L223.7,68.4 L223.4,68.8 L222.7,68.8 L222.5,68.4 L222.2,68.4 L221.3,69.1 L221.6,69.4 L221.2,69.3 L220.9,69.6 L220.6,69.6 L220.5,69.7 L220.4,69.1 L219.5,69.2 L218.8,68.9 L218.8,68.5 L218.4,68.6 L218.2,68.4 L218.5,67.7 L219.1,67.1 L219.0,66.8 L219.5,66.3 L219.2,65.9 L218.7,66.0 L219.2,65.4 L219.5,65.4 L219.7,64.9 L219.7,64.6 L219.2,64.3 L219.4,63.9 L219.3,63.7 L219.4,63.2 L219.9,63.3 L220.0,63.7 L220.3,63.8 L221.4,63.8 L221.3,64.2 L220.9,64.2 L221.0,64.5 L220.5,65.5 L221.2,65.8 L221.6,65.5 L221.7,65.5 L221.6,66.0 L222.3,66.0 L222.1,66.5 L222.3,66.8 L222.6,66.8 L222.9,66.3 L223.6,66.2 L223.3,66.0 L223.6,65.7 L223.1,65.4 L223.6,65.5 L223.6,65.0 L223.9,65.0 L224.9,64.4 L225.1,64.6 L225.2,65.1 L225.7,64.4 L226.9,64.7 L227.4,64.4 L226.9,64.8 L226.9,65.0 Z M226.9,65.0 L226.9,65.0 L226.8,65.0 L226.9,65.0 Z M226.8,65.0 L226.8,65.0 L226.8,65.0 L226.8,65.0 Z M226.8,65.0 L226.8,65.0 L226.8,65.0 L226.8,65.0 Z M232.1,50.4 L232.5,50.5 L232.9,50.1 L233.4,50.2 L232.8,51.2 L232.5,51.1 L232.1,51.7 L231.7,51.7 L231.6,51.4 L232.1,50.4 Z M233.5,50.1 L233.4,50.0 L233.5,50.0 L233.5,50.1 Z M233.5,50.0 L233.9,49.4 L234.1,49.6 L234.7,49.6 L234.5,49.9 L233.5,50.0 Z M231.0,48.9 L231.2,48.8 L231.3,48.9 L231.2,49.0 L231.0,48.9 Z M231.2,49.1 L231.3,49.0 L231.3,49.0 L231.2,49.1 Z M231.3,49.2 L231.2,49.2 L231.3,49.2 L231.3,49.2 Z M228.6,46.4 L228.7,46.2 L228.8,46.2 L228.8,46.4 L228.6,46.4 Z M229.5,45.5 L229.8,45.2 L229.7,45.0 L230.3,45.1 L230.3,44.6 L230.9,44.3 L231.0,44.6 L231.2,44.6 L230.6,45.2 L230.7,45.5 L230.9,45.3 L231.0,45.3 L230.7,45.6 L231.2,45.9 L230.6,46.4 L230.6,46.7 L230.9,46.7 L230.9,46.9 L230.5,47.4 L229.5,47.5 L229.4,47.1 L229.1,47.0 L229.2,46.6 L229.0,46.5 L229.8,46.2 L229.9,45.9 L229.9,45.6 L229.5,45.5 Z M234.6,52.2 L235.0,52.1 L235.0,52.3 L234.8,52.4 L234.6,52.2 Z M234.6,52.2 L234.2,52.4 L234.3,52.7 L234.1,52.8 L234.0,52.4 L234.3,52.0 L234.6,52.2 Z M231.3,49.1 L231.3,49.1 L231.3,49.2 L231.3,49.1 Z M230.2,44.4 L230.3,44.2 L230.4,44.2 L230.2,44.4 Z M234.7,54.1 L234.7,54.1 L234.7,54.1 L234.7,54.1 Z M234.5,54.6 L234.6,54.6 L234.5,54.6 L234.5,54.6 Z M234.3,55.9 L234.3,55.9 L234.3,55.9 L234.3,55.9 Z M234.2,55.9 L234.2,55.8 L234.2,55.9 L234.2,55.9 Z M234.2,55.8 L234.2,55.8 L234.2,55.8 L234.2,55.8 Z M234.2,56.3 L234.2,56.2 L234.2,56.2 L234.2,56.3 Z M234.2,55.8 L234.2,55.8 L234.2,55.8 L234.2,55.8 Z M234.2,56.0 L234.2,55.9 L234.3,55.9 L234.2,56.0 Z M234.3,55.2 L234.3,55.2 L234.3,55.2 L234.3,55.2 Z M234.8,56.5 L234.8,56.5 L234.8,56.5 L234.8,56.5 Z M234.5,56.5 L234.4,56.5 L234.5,56.5 L234.5,56.5 Z M234.5,57.0 L234.5,57.0 L234.5,57.0 L234.5,57.0 Z M234.1,57.2 L234.1,57.1 L234.1,57.2 L234.1,57.2 Z M234.4,57.3 L234.1,57.2 L234.3,56.9 L234.5,57.1 L234.7,57.0 L234.4,57.3 Z M234.2,56.5 L234.6,56.7 L234.8,56.6 L234.2,56.8 L234.2,56.5 Z M234.9,56.6 L234.8,56.6 L234.8,56.6 L234.9,56.6 Z M234.8,56.5 L234.8,56.5 L234.8,56.5 L234.8,56.5 Z M229.7,54.4 L229.7,54.3 L229.8,54.3 L229.7,54.4 Z M228.1,57.4 L228.1,57.3 L228.1,57.4 L228.1,57.4 Z M227.3,60.1 L227.3,60.0 L227.3,60.0 L227.3,60.1 Z M227.9,65.7 L227.9,65.7 L227.9,65.7 L227.9,65.7 Z M228.4,64.4 L228.4,64.4 L228.4,64.4 L228.4,64.4 Z M228.4,64.4 L228.4,64.4 L228.4,64.4 L228.4,64.4 Z M228.4,64.4 L228.4,64.4 L228.4,64.4 L228.4,64.4 Z M228.4,64.4 L228.4,64.4 L228.4,64.4 L228.4,64.4 Z M228.4,64.4 L228.4,64.4 L228.4,64.4 L228.4,64.4 Z M228.3,64.3 L228.3,64.3 L228.3,64.3 L228.3,64.3 Z M228.3,64.3 L228.3,64.3 L228.3,64.4 L228.3,64.3 Z M228.2,64.3 L228.2,64.3 L228.2,64.3 L228.2,64.3 Z M228.1,64.4 L228.1,64.4 L228.1,64.4 L228.1,64.4 Z M228.1,64.4 L228.1,64.4 L228.1,64.4 L228.1,64.4 Z M228.1,64.3 L228.1,64.3 L228.1,64.3 L228.1,64.3 Z M228.2,64.5 L228.2,64.5 L228.2,64.4 L228.2,64.5 Z M227.9,64.5 L227.9,64.5 L227.9,64.5 L227.9,64.5 Z M227.9,64.5 L227.9,64.5 L227.9,64.5 L227.9,64.5 Z M227.4,64.4 L227.4,64.4 L227.4,64.4 L227.4,64.4 Z M228.4,64.8 L228.3,64.8 L228.4,64.8 L228.4,64.8 Z M228.4,64.8 L228.4,64.8 L228.4,64.8 L228.4,64.8 Z M228.3,64.8 L228.3,64.8 L228.3,64.8 L228.3,64.8 Z M228.3,64.9 L228.3,64.9 L228.3,64.9 L228.3,64.9 Z M228.3,65.0 L228.3,65.0 L228.3,65.0 L228.3,65.0 Z M228.2,65.0 L228.2,65.0 L228.2,65.0 L228.2,65.0 Z M228.3,65.0 L228.2,65.0 L228.2,65.0 L228.3,65.0 Z M228.3,65.0 L228.3,65.0 L228.3,65.0 L228.3,65.0 Z M228.3,65.0 L228.3,65.0 L228.3,65.0 L228.3,65.0 Z M228.3,65.0 L228.3,64.9 L228.3,65.0 L228.3,65.0 Z M228.3,65.0 L228.3,64.9 L228.3,64.9 L228.3,65.0 Z M228.3,65.2 L228.3,65.2 L228.3,65.2 L228.3,65.2 Z M228.2,64.6 L228.2,64.6 L228.2,64.6 L228.2,64.6 Z M228.2,65.1 L228.2,65.0 L228.2,65.1 L228.2,65.1 Z M227.8,64.6 L227.8,64.6 L227.8,64.6 L227.8,64.6 Z M227.8,64.6 L227.8,64.6 L227.8,64.6 L227.8,64.6 Z M227.8,64.6 L227.8,64.6 L227.8,64.6 L227.8,64.6 Z M227.8,64.6 L227.8,64.6 L227.8,64.6 L227.8,64.6 Z M228.1,65.1 L228.1,65.1 L228.1,65.1 L228.1,65.1 Z M228.2,65.3 L228.2,65.3 L228.2,65.2 L228.2,65.3 Z M228.2,65.3 L228.2,65.3 L228.2,65.3 L228.2,65.3 Z M228.1,65.3 L228.1,65.2 L228.1,65.3 L228.1,65.3 Z M228.1,65.2 L228.1,65.2 L228.2,65.2 L228.1,65.2 Z M228.0,65.3 L228.0,65.3 L228.0,65.3 L228.0,65.3 Z M228.0,65.3 L228.0,65.3 L228.0,65.3 L228.0,65.3 Z M228.0,65.4 L228.0,65.3 L228.0,65.4 L228.0,65.4 Z M228.1,65.3 L228.1,65.3 L228.1,65.3 L228.1,65.3 Z M227.3,64.6 L227.3,64.5 L227.3,64.5 L227.3,64.6 Z M226.9,64.9 L226.9,64.9 L226.9,64.9 L226.9,64.9 Z M226.9,64.9 L226.9,64.9 L227.0,64.9 L226.9,64.9 Z M228.0,65.7 L228.0,65.7 L227.9,65.7 L228.0,65.7 Z M227.8,65.6 L227.8,65.6 L227.8,65.6 L227.8,65.6 Z M227.9,65.6 L227.9,65.6 L227.9,65.6 L227.9,65.6 Z M227.9,65.6 L227.9,65.6 L227.9,65.6 L227.9,65.6 Z M227.9,65.7 L227.9,65.7 L227.9,65.7 L227.9,65.7 Z M227.9,65.7 L227.9,65.7 L227.9,65.7 L227.9,65.7 Z M227.8,65.7 L227.8,65.7 L227.8,65.7 L227.8,65.7 Z M227.9,65.7 L227.9,65.7 L227.9,65.7 L227.9,65.7 Z M227.9,65.7 L227.9,65.7 L227.9,65.7 L227.9,65.7 Z M227.7,65.7 L227.7,65.6 L227.7,65.7 L227.7,65.7 Z M227.7,65.7 L227.7,65.7 L227.7,65.7 L227.7,65.7 Z M227.8,65.6 L227.8,65.6 L227.8,65.6 L227.8,65.6 Z M228.1,65.6 L228.2,65.6 L228.2,65.6 L228.1,65.6 Z M228.2,65.3 L228.2,65.2 L228.3,65.3 L228.2,65.3 Z M228.3,64.6 L228.2,64.6 L228.2,64.6 L228.3,64.6 Z M228.3,64.8 L228.1,65.1 L228.1,65.2 L228.0,65.3 L228.0,65.4 L228.0,65.4 L227.9,65.4 L228.0,65.5 L227.8,65.7 L227.7,65.0 L228.0,64.3 L228.2,64.6 L228.1,64.5 L228.1,64.8 L228.3,64.8 Z M226.2,66.4 L226.2,66.3 L226.2,66.4 L226.2,66.4 Z M226.1,66.4 L226.1,66.4 L226.1,66.4 L226.1,66.4 Z M226.0,66.4 L226.0,66.4 L226.1,66.4 L226.0,66.4 Z M226.1,66.4 L226.1,66.4 L226.1,66.4 L226.1,66.4 Z M226.1,66.5 L226.1,66.4 L226.1,66.5 L226.1,66.5 Z M226.0,66.4 L226.0,66.4 L226.1,66.4 L226.0,66.4 Z M226.0,66.4 L226.0,66.4 L226.0,66.4 L226.0,66.4 Z M226.1,66.4 L226.1,66.4 L226.1,66.4 L226.1,66.4 Z M226.1,66.4 L226.1,66.4 L226.1,66.4 L226.1,66.4 Z M226.1,66.4 L226.1,66.4 L226.1,66.4 L226.1,66.4 Z M225.5,67.6 L225.5,67.6 L225.5,67.6 L225.5,67.6 Z M225.5,67.5 L225.5,67.5 L225.5,67.5 L225.5,67.5 Z M225.4,67.6 L225.4,67.5 L225.4,67.5 L225.4,67.6 Z M225.4,67.5 L225.5,67.5 L225.5,67.5 L225.4,67.5 Z M224.0,68.3 L224.0,68.3 L224.0,68.3 L224.0,68.3 Z M223.9,68.3 L223.9,68.2 L224.0,68.3 L223.9,68.3 Z M221.3,64.2 L221.3,64.2 L221.3,64.2 L221.3,64.2 Z M221.7,65.5 L221.7,65.5 L221.7,65.5 L221.7,65.5 Z M220.0,63.4 L220.0,63.4 L220.0,63.4 L220.0,63.4 Z M220.6,69.8 L220.6,69.6 L220.7,69.7 L220.6,69.8 Z M228.1,64.4 L228.1,64.4 L228.1,64.4 L228.1,64.4 Z M227.9,64.5 L227.9,64.5 L227.9,64.5 L227.9,64.5 Z M228.1,65.1 L228.1,65.1 L228.1,65.1 L228.1,65.1 Z M228.0,65.3 L228.0,65.3 L228.0,65.3 L228.0,65.3 Z M228.1,65.4 L228.1,65.4 L228.1,65.4 L228.1,65.4 Z M228.1,65.4 L228.1,65.3 L228.1,65.3 L228.1,65.4 Z M228.0,65.3 L228.0,65.3 L228.0,65.3 L228.0,65.3 Z M228.0,65.3 L228.0,65.3 L228.0,65.3 L228.0,65.3 Z M228.2,65.0 L228.2,65.0 L228.2,65.0 L228.2,65.0 Z M225.8,64.4 L225.8,64.4 L225.8,64.4 L225.8,64.4 Z M309.8,30.7 L309.8,30.8 L309.8,30.7 L309.8,30.7 Z M309.6,31.0 L309.7,31.0 L309.7,31.0 L309.6,31.0 Z M309.2,31.6 L309.2,31.6 L309.3,31.6 L309.2,31.6 Z M309.3,31.5 L309.3,31.4 L309.3,31.5 L309.3,31.5 Z M309.1,31.9 L309.2,31.9 L309.1,32.0 L309.1,31.9 Z M307.5,32.3 L307.4,32.4 L307.3,32.4 L307.5,32.3 Z M307.5,32.3 L307.5,32.2 L307.5,32.2 L307.5,32.3 Z M307.8,32.0 L307.8,32.2 L307.7,32.1 L307.8,32.0 Z M307.2,32.6 L307.3,32.6 L307.2,32.6 L307.2,32.6 Z M307.0,27.2 L307.1,27.2 L307.0,27.2 L307.0,27.2 Z M306.0,27.2 L306.1,27.2 L306.1,27.2 L306.0,27.2 Z M306.0,27.2 L306.0,27.2 L306.0,27.2 L306.0,27.2 Z M306.0,27.3 L306.0,27.3 L306.0,27.3 L306.0,27.3 Z M306.0,27.3 L306.0,27.3 L306.1,27.3 L306.0,27.3 Z M307.8,32.0 L307.9,32.0 L307.9,32.1 L307.8,32.0 Z M309.6,30.9 L309.1,31.5 L309.0,31.9 L308.9,31.5 L308.3,31.8 L308.2,31.5 L307.9,31.4 L307.6,32.1 L307.2,31.5 L307.5,31.1 L307.5,30.8 L307.2,30.5 L307.6,30.7 L307.7,30.5 L307.7,30.7 L307.9,30.4 L307.7,29.8 L307.1,29.5 L306.6,29.9 L306.4,28.0 L305.3,29.4 L305.4,28.8 L305.3,28.3 L306.1,27.9 L306.0,27.3 L306.2,27.4 L306.4,27.3 L306.6,27.5 L306.9,27.2 L306.9,27.5 L307.1,27.8 L307.3,27.7 L307.5,28.3 L307.2,29.4 L307.6,29.4 L307.8,29.6 L308.1,29.3 L308.8,29.5 L308.8,28.8 L309.1,28.3 L310.0,28.2 L310.1,28.5 L309.8,29.1 L310.2,29.0 L310.6,29.5 L311.1,29.1 L311.3,29.8 L311.7,29.9 L311.8,30.3 L311.4,30.5 L311.0,30.1 L310.7,30.4 L310.5,29.9 L310.3,29.8 L310.1,30.1 L310.1,30.6 L309.8,30.6 L309.7,30.8 L309.8,31.0 L309.6,30.9 Z M306.1,27.3 L306.1,27.3 L306.1,27.3 L306.1,27.3 Z M307.3,32.6 L307.3,32.4 L307.4,32.5 L307.3,32.6 Z M223.1,96.7 L223.1,96.7 L223.1,96.7 L223.1,96.7 Z M223.8,96.6 L223.8,96.6 L223.8,96.6 L223.8,96.6 Z M231.1,96.6 L231.1,96.6 L231.1,96.6 L231.1,96.6 Z M231.2,96.7 L231.2,96.7 L231.1,96.7 L231.2,96.7 Z M231.2,96.7 L231.1,96.6 L231.3,96.5 L231.2,96.7 Z M231.2,96.8 L231.2,96.8 L231.2,96.8 L231.2,96.8 Z M231.2,96.8 L231.2,96.8 L231.2,96.8 L231.2,96.8 Z M231.1,96.8 L231.1,96.8 L231.1,96.8 L231.1,96.8 Z M231.1,96.9 L231.1,96.9 L231.1,96.9 L231.1,96.9 Z M231.1,96.9 L231.1,96.9 L231.1,96.9 L231.1,96.9 Z M231.1,96.8 L231.2,96.8 L231.2,96.8 L231.1,96.8 Z M230.8,97.5 L230.8,97.5 L230.8,97.5 L230.8,97.5 Z M230.8,97.5 L230.8,97.5 L230.8,97.5 L230.8,97.5 Z M230.7,98.6 L230.7,98.6 L230.7,98.6 L230.7,98.6 Z M230.7,98.6 L230.7,98.6 L230.7,98.6 L230.7,98.6 Z M230.8,98.8 L230.7,98.7 L230.8,98.7 L230.8,98.8 Z M230.2,99.5 L230.3,99.5 L230.3,99.5 L230.2,99.5 Z M230.1,99.6 L230.1,99.6 L230.1,99.6 L230.1,99.6 Z M230.0,99.7 L230.0,99.8 L230.0,99.8 L230.0,99.7 Z M230.0,99.7 L230.0,99.7 L230.0,99.7 L230.0,99.7 Z M229.9,99.7 L229.9,99.8 L229.9,99.8 L229.9,99.7 Z M230.0,99.7 L230.2,99.6 L230.2,99.6 L230.0,99.7 Z M228.6,97.7 L228.6,97.7 L228.7,97.6 L228.6,97.7 Z M228.7,97.7 L228.7,97.7 L228.7,97.7 L228.7,97.7 Z M227.0,97.8 L227.0,97.8 L227.0,97.8 L227.0,97.8 Z M227.1,97.7 L227.0,97.7 L227.0,97.7 L227.1,97.7 Z M227.1,97.9 L227.1,97.9 L227.1,97.9 L227.1,97.9 Z M227.1,97.9 L227.1,97.9 L227.1,97.9 L227.1,97.9 Z M227.1,97.8 L227.1,97.8 L227.1,97.8 L227.1,97.8 Z M227.1,97.9 L227.1,97.9 L227.1,97.9 L227.1,97.9 Z M226.8,98.3 L226.9,98.3 L226.8,98.4 L226.8,98.3 Z M226.9,98.0 L226.9,98.0 L226.9,98.0 L226.9,98.0 Z M227.2,98.5 L226.8,98.5 L226.9,98.4 L227.1,97.9 L227.3,98.0 L227.2,98.5 Z M227.2,97.8 L227.1,97.8 L227.2,97.8 L227.2,97.8 Z M228.8,97.9 L228.7,97.8 L228.8,97.8 L228.8,97.9 Z M229.0,100.6 L229.0,100.6 L229.0,100.6 L229.0,100.6 Z M229.0,101.1 L229.1,101.2 L229.0,101.2 L229.0,101.1 Z M229.1,100.8 L229.0,100.7 L229.1,100.7 L229.1,100.8 Z M227.0,102.3 L227.0,102.2 L227.0,102.2 L227.0,102.3 Z M226.9,102.8 L226.8,102.8 L226.9,102.8 L226.9,102.8 Z M226.5,102.9 L226.9,102.8 L226.9,103.3 L226.4,103.8 L226.5,102.9 Z M228.8,97.9 L228.4,98.8 L229.1,98.9 L229.1,99.2 L229.4,99.3 L229.9,98.6 L230.3,98.8 L230.7,98.6 L230.4,98.9 L230.6,99.0 L230.6,99.2 L230.3,99.2 L230.4,99.4 L229.9,99.8 L230.0,100.1 L229.9,100.2 L228.9,100.6 L229.1,101.0 L228.9,101.2 L228.9,101.1 L228.4,101.3 L228.4,101.6 L228.1,101.6 L227.9,101.1 L227.3,102.0 L227.0,101.9 L226.8,102.5 L226.2,102.2 L227.0,101.2 L226.8,100.7 L227.1,100.8 L227.6,100.4 L228.4,98.0 L228.6,97.8 L228.8,97.9 Z M224.3,96.8 L224.3,96.8 L224.3,96.8 L224.3,96.8 Z M224.3,96.8 L224.3,96.8 L224.3,96.8 L224.3,96.8 Z M224.3,96.8 L224.3,96.8 L224.4,96.8 L224.3,96.8 Z M224.1,96.6 L224.0,96.6 L224.1,96.6 L224.1,96.6 Z M224.0,96.6 L224.0,96.6 L224.0,96.6 L224.0,96.6 Z M223.8,96.6 L223.8,96.6 L223.8,96.6 L223.8,96.6 Z M224.0,96.7 L224.0,96.7 L224.0,96.7 L224.0,96.7 Z M224.1,97.5 L224.2,97.4 L224.1,97.5 L224.1,97.5 Z M224.1,97.6 L224.1,97.5 L224.1,97.6 L224.1,97.6 Z M224.1,97.5 L224.1,97.5 L224.1,97.5 L224.1,97.5 Z M223.1,96.7 L223.1,96.6 L223.2,96.6 L223.1,96.7 L223.1,96.7 Z M223.6,96.6 L223.6,96.5 L223.6,96.5 L223.6,96.6 Z M223.8,96.5 L223.8,96.5 L223.8,96.5 L223.8,96.5 Z M219.8,98.0 L220.2,97.5 L220.2,97.4 L220.3,97.3 L220.3,97.7 L219.8,98.0 Z M228.7,97.7 L228.7,97.7 L228.7,97.7 L228.7,97.7 Z M227.2,97.8 L227.2,97.9 L227.2,97.9 L227.2,97.8 Z M227.3,98.0 L227.3,98.0 L227.3,98.0 L227.3,98.0 Z M227.1,97.9 L227.1,97.9 L227.1,97.9 L227.1,97.9 Z M227.0,97.8 L227.0,97.9 L227.0,97.8 L227.0,97.8 Z M227.0,98.0 L227.0,98.0 L226.9,98.0 L227.0,98.0 Z M221.0,96.8 L221.0,96.7 L221.0,96.7 L221.0,96.8 Z M268.0,33.5 L267.9,33.5 L268.0,33.5 L268.0,33.5 Z M267.9,33.6 L268.0,33.6 L267.9,33.6 L267.9,33.6 Z M267.6,34.3 L267.6,34.3 L267.6,34.3 L267.6,34.3 Z M267.3,34.6 L267.4,34.6 L267.4,34.6 L267.3,34.6 Z M267.4,34.4 L267.4,34.4 L267.4,34.4 L267.4,34.4 Z M267.3,34.7 L267.3,34.7 L267.3,34.7 L267.3,34.7 Z M267.2,34.9 L267.2,34.9 L267.2,34.9 L267.2,34.9 Z M267.0,35.0 L267.0,35.0 L267.1,35.0 L267.0,35.0 Z M267.0,35.0 L267.0,35.0 L267.0,35.0 L267.0,35.0 Z M267.8,34.0 L267.7,34.2 L267.7,34.0 L267.8,34.0 Z M266.1,35.5 L266.1,35.4 L266.1,35.5 L266.1,35.5 Z M266.1,35.4 L266.1,35.4 L266.0,35.5 L266.1,35.4 Z M265.9,35.7 L266.0,35.7 L265.9,35.7 L265.9,35.7 Z M265.6,35.6 L265.7,35.6 L265.6,35.7 L265.6,35.6 Z M266.0,35.7 L265.9,35.6 L265.9,35.6 L266.0,35.7 Z M265.6,35.6 L265.6,35.6 L265.6,35.6 L265.6,35.6 Z M265.5,35.6 L265.5,35.6 L265.5,35.6 L265.5,35.6 Z M265.5,35.6 L265.5,35.7 L265.5,35.6 L265.5,35.6 Z M265.6,35.6 L265.6,35.6 L265.5,35.7 L265.6,35.6 Z M267.6,33.8 L267.6,33.8 L267.6,33.8 L267.6,33.8 Z M268.1,33.8 L267.8,34.0 L267.7,33.9 L267.6,34.1 L267.6,34.3 L267.3,34.4 L267.1,34.9 L266.7,35.0 L266.6,35.4 L266.2,35.5 L266.6,34.5 L266.9,34.6 L267.2,34.0 L267.5,33.9 L267.8,33.6 L267.9,33.6 L268.1,33.7 L268.1,33.8 Z M232.1,44.9 L232.1,44.8 L232.3,44.8 L232.1,44.9 Z M232.2,45.1 L232.3,45.1 L232.2,45.2 L232.2,45.1 Z M232.3,45.0 L232.2,44.9 L232.3,44.9 L232.3,45.0 Z M232.3,44.6 L232.3,44.6 L232.3,44.6 L232.3,44.6 Z M232.3,44.7 L232.3,44.7 L232.3,44.7 L232.3,44.7 Z M232.2,44.6 L232.2,44.7 L232.1,44.8 L232.2,44.6 Z M232.2,44.6 L232.1,44.7 L232.1,44.6 L232.2,44.6 Z M233.6,42.0 L233.7,42.0 L233.6,42.0 L233.6,42.0 Z M233.7,41.9 L233.7,41.9 L233.7,42.0 L233.7,41.9 Z M224.4,59.7 L224.4,59.9 L224.1,60.0 L224.2,59.7 L224.4,59.7 Z M229.4,61.3 L229.4,61.2 L229.4,61.3 L229.4,61.3 Z M229.4,61.1 L229.4,61.1 L229.4,61.1 L229.4,61.1 Z M229.4,61.2 L229.3,61.3 L229.3,61.1 L229.4,61.2 Z M226.8,68.6 L226.8,68.6 L226.8,68.6 L226.8,68.6 Z M226.8,68.5 L226.8,68.5 L226.8,68.5 L226.8,68.5 Z M226.9,68.6 L226.9,68.5 L226.9,68.5 L226.9,68.6 Z M226.9,68.5 L226.9,68.5 L226.9,68.5 L226.9,68.5 Z M226.8,68.6 L226.8,68.6 L226.8,68.6 L226.8,68.6 Z M226.9,68.6 L226.8,68.6 L226.9,68.6 L226.9,68.6 Z M228.1,73.5 L228.1,73.5 L228.1,73.5 L228.1,73.5 Z M228.1,73.5 L228.0,73.4 L228.1,73.4 L228.1,73.5 Z M228.3,73.5 L228.3,73.6 L228.3,73.5 L228.3,73.5 Z M227.0,77.7 L227.0,77.7 L227.0,77.7 L227.0,77.7 Z M226.9,77.7 L226.9,77.7 L227.0,77.7 L226.9,77.7 Z M227.0,77.7 L227.0,77.7 L226.9,77.7 L227.0,77.7 Z M227.0,77.8 L227.0,77.8 L227.0,77.8 L227.0,77.8 Z M226.7,78.8 L226.7,78.8 L226.8,78.7 L226.7,78.8 Z M226.6,78.7 L226.6,78.7 L226.6,78.7 L226.6,78.7 Z M226.6,78.7 L226.5,78.7 L226.5,78.7 L226.6,78.7 Z M226.5,78.7 L226.6,78.7 L226.6,78.7 L226.5,78.7 Z M226.5,78.9 L226.5,78.8 L226.5,78.8 L226.5,78.9 Z M226.6,78.8 L226.5,78.8 L226.6,78.8 L226.6,78.8 Z M226.4,78.5 L226.4,78.5 L226.4,78.5 L226.4,78.5 Z M226.3,78.5 L226.3,78.5 L226.3,78.5 L226.3,78.5 Z M226.4,78.6 L226.3,78.6 L226.3,78.6 L226.4,78.6 Z M226.3,78.5 L226.4,78.6 L226.3,78.5 L226.3,78.5 Z M226.5,78.8 L226.4,78.7 L226.5,78.7 L226.5,78.7 L226.5,78.7 L226.5,78.7 L226.6,78.7 L226.6,78.7 L226.6,78.7 L226.5,78.8 Z M226.4,78.7 L226.4,78.7 L226.4,78.7 L226.4,78.7 Z M307.4,26.2 L307.4,26.2 L307.4,26.2 L307.4,26.2 Z M294.9,66.3 L295.5,66.6 L295.4,66.7 L295.0,66.6 L294.8,66.4 L294.9,66.2 L294.9,66.3 Z M263.8,50.7 L263.8,50.6 L263.8,50.6 L263.8,50.7 Z M263.9,50.5 L263.8,50.5 L263.8,50.5 L263.9,50.5 Z M241.8,52.6 L241.9,52.4 L242.1,52.4 L241.8,52.6 Z M241.9,52.6 L241.9,52.6 L241.9,52.6 L241.9,52.6 Z M241.9,52.5 L242.0,52.5 L241.9,52.6 L241.9,52.5 Z M242.0,52.5 L242.0,52.5 L242.0,52.5 L242.0,52.5 Z M241.8,52.6 L241.9,52.6 L241.8,52.6 L241.8,52.6 Z M241.9,52.5 L241.9,52.5 L241.8,52.6 L241.9,52.5 Z M241.8,52.5 L241.8,52.5 L241.8,52.5 L241.8,52.5 Z M241.7,52.6 L241.8,52.6 L241.8,52.6 L241.7,52.6 Z M242.1,53.2 L242.1,53.1 L242.2,53.1 L242.1,53.2 Z M239.8,54.5 L239.9,54.5 L239.8,54.6 L239.8,54.5 Z M228.1,59.0 L227.9,59.1 L228.2,59.4 L228.2,59.8 L228.6,59.9 L228.6,60.3 L228.2,60.3 L228.2,59.9 L227.9,59.8 L227.1,59.9 L227.2,59.3 L227.0,58.5 L227.5,58.1 L227.1,57.8 L227.8,56.8 L227.5,56.3 L227.6,55.8 L227.3,55.7 L227.3,55.3 L227.9,55.4 L229.1,54.5 L229.7,54.6 L230.6,53.6 L231.1,53.3 L231.3,53.0 L231.2,52.8 L231.6,52.4 L232.4,52.4 L232.6,53.1 L233.3,53.1 L233.2,53.4 L233.4,54.2 L233.0,54.6 L233.3,54.6 L233.5,54.2 L234.0,54.0 L234.8,54.2 L234.4,54.7 L234.6,54.9 L234.0,55.3 L233.9,55.6 L234.2,55.9 L234.2,56.5 L233.9,56.4 L233.8,55.8 L233.5,55.6 L233.5,55.2 L233.0,55.1 L232.8,55.1 L232.4,55.7 L232.2,55.6 L232.5,55.2 L232.1,55.1 L231.9,55.8 L231.3,55.8 L230.8,56.5 L230.6,56.4 L230.7,55.9 L230.1,55.8 L228.7,56.4 L228.1,57.1 L227.9,57.6 L228.2,58.6 L228.1,59.0 Z M221.4,98.6 L220.7,97.5 L220.4,97.4 L220.8,96.8 L221.7,96.7 L222.0,97.0 L223.7,96.6 L223.8,96.7 L224.4,96.8 L224.3,97.3 L224.1,97.4 L224.1,97.6 L223.4,98.3 L222.8,98.2 L222.8,98.7 L222.3,99.2 L221.7,99.2 L222.0,99.1 L222.0,98.9 L221.7,98.5 L221.4,98.6 Z"},{"name":"金門縣","d":"M104.7,80.6 L98.3,83.9 L95.0,87.7 L90.9,94.2 L89.8,98.5 L88.2,101.8 L86.7,102.6 L85.6,102.4 L84.8,103.5 L83.0,103.3 L80.7,101.2 L77.8,100.8 L77.0,99.2 L75.4,98.1 L74.1,97.6 L71.3,97.9 L71.6,96.9 L70.8,95.7 L68.8,94.7 L68.1,93.0 L66.7,92.5 L62.7,88.5 L63.5,87.5 L65.8,87.8 L66.7,87.7 L66.7,87.2 L66.8,87.0 L67.1,87.8 L68.0,87.0 L69.2,88.3 L71.2,88.3 L73.0,87.1 L74.1,85.1 L74.3,83.9 L73.7,82.8 L75.6,81.3 L77.3,81.7 L78.5,80.7 L77.4,78.2 L77.1,72.5 L74.2,66.7 L74.0,64.5 L74.7,63.0 L67.1,58.6 L68.2,57.3 L69.3,54.0 L70.8,52.9 L73.0,52.5 L75.8,49.1 L77.9,49.3 L78.1,47.9 L80.3,47.9 L89.5,56.3 L95.0,60.1 L98.0,61.5 L99.5,61.1 L106.5,63.2 L108.9,63.1 L110.8,60.9 L111.9,60.6 L111.6,59.4 L112.2,58.5 L111.9,59.9 L112.4,60.9 L114.1,59.8 L115.1,57.0 L114.4,54.2 L111.5,51.4 L115.4,51.4 L115.5,50.0 L119.3,47.4 L118.8,44.6 L117.6,43.4 L118.8,42.8 L118.8,39.6 L118.0,37.7 L118.8,36.9 L121.6,36.6 L124.4,34.3 L127.1,33.5 L127.5,32.0 L126.3,30.4 L126.6,29.1 L125.6,29.0 L125.1,28.0 L125.5,26.9 L127.0,27.7 L126.7,28.3 L127.2,29.2 L128.6,29.7 L130.0,27.9 L131.8,28.2 L133.0,27.2 L132.6,28.3 L134.9,28.7 L134.1,30.2 L137.5,37.9 L138.8,37.5 L141.6,38.5 L143.0,37.5 L144.1,38.5 L144.7,38.0 L145.4,38.4 L144.9,41.1 L145.3,43.7 L145.9,44.9 L147.1,45.2 L150.2,53.1 L151.1,53.7 L152.3,52.3 L153.9,52.2 L155.2,53.6 L154.9,54.1 L154.0,53.6 L151.5,56.0 L151.6,57.3 L152.3,57.5 L151.6,58.1 L152.9,65.6 L154.2,67.9 L155.4,68.4 L156.7,67.9 L157.0,68.9 L156.6,70.5 L155.8,71.2 L156.0,72.2 L157.2,71.8 L156.3,72.6 L156.9,73.8 L156.1,73.7 L156.0,74.4 L155.2,74.6 L154.2,73.7 L153.2,73.8 L151.3,76.2 L151.5,77.3 L152.2,77.6 L152.1,79.9 L153.0,79.8 L153.5,80.6 L151.3,82.6 L148.8,82.3 L147.8,83.9 L148.0,86.3 L146.7,87.9 L145.4,87.6 L142.6,89.9 L139.8,90.1 L140.0,91.2 L135.2,92.1 L134.4,90.8 L135.0,91.3 L137.2,91.1 L137.8,90.3 L137.7,89.1 L134.3,90.0 L138.3,88.3 L135.5,82.5 L128.4,81.2 L127.0,80.4 L126.2,81.0 L127.0,79.1 L126.5,78.9 L126.0,80.4 L126.1,79.7 L123.3,77.5 L119.6,77.0 L119.4,76.5 L114.9,77.1 L104.7,80.6 Z M55.2,81.9 L55.3,83.7 L55.0,83.9 L53.9,83.9 L53.7,82.6 L52.4,82.3 L48.8,83.4 L47.2,85.4 L47.1,86.6 L48.0,87.0 L46.9,88.5 L45.0,89.7 L45.1,88.4 L44.5,88.1 L41.7,88.4 L39.4,90.1 L37.3,93.2 L35.5,90.9 L31.8,90.7 L30.4,89.0 L31.9,89.4 L33.6,87.6 L34.4,87.6 L34.4,85.6 L33.1,82.1 L36.6,81.2 L38.0,79.6 L39.3,70.4 L42.1,69.3 L46.0,69.6 L46.1,68.0 L47.2,67.4 L49.8,67.7 L55.2,72.2 L57.3,72.7 L57.1,76.4 L55.5,77.8 L56.3,80.3 L55.2,81.9 Z M138.6,30.7 L140.0,29.5 L140.6,29.3 L140.7,30.0 L139.4,30.7 L138.6,30.7 Z M38.9,93.4 L39.5,93.4 L40.0,94.1 L38.8,94.3 L38.9,93.4 Z M127.4,27.6 L127.3,26.5 L128.2,27.2 L127.4,27.6 Z M149.3,87.7 L149.5,88.3 L148.8,89.0 L148.7,88.5 L149.3,87.7 Z M157.0,70.6 L158.9,70.0 L157.5,70.7 L157.0,70.6 Z M95.9,90.7 L95.7,91.3 L95.1,91.5 L95.5,90.9 L95.9,90.7 Z M149.7,87.3 L150.1,86.5 L149.7,87.4 L149.7,87.3 Z M91.3,98.4 L91.7,98.6 L91.5,98.8 L91.3,98.4 Z M159.4,70.9 L159.7,70.1 L159.5,71.0 L159.4,70.9 Z M45.3,63.9 L45.2,63.6 L45.4,63.6 L45.3,63.9 Z M91.7,101.3 L92.0,101.3 L91.7,101.6 L91.7,101.3 Z M154.1,62.6 L154.4,62.4 L154.2,62.9 L154.1,62.6 Z M40.3,65.2 L40.3,64.9 L40.5,65.1 L40.3,65.2 Z M40.1,59.4 L40.3,59.3 L40.3,59.4 L40.1,59.4 Z M90.7,103.0 L90.9,103.0 L90.8,103.1 L90.7,103.0 Z"}],"inset_boxes":{"金門縣":{"x":20,"y":20,"w":150,"h":90,"label":"金門"},"連江縣":{"x":190,"y":20,"w":150,"h":90,"label":"馬祖"}},"side_transforms":{"連江縣":{"minlon":119.86598353259964,"maxlon":120.56530861449271,"minlat":25.90373075737846,"maxlat":26.423894828739716,"fw":108.6009546665771,"fh":90,"offx":210.69952266671146,"offy":20.0},"金門縣":{"minlon":118.18998343052006,"maxlon":118.4997632373401,"minlat":24.373872384032026,"maxlat":24.541783066367554,"fw":150,"fh":89.31986063728708,"offx":20.0,"offy":20.34006968135646}}};</script><script>
+const CONTROLLED_TAGS = ["淹水","崩塌","地震","土石流","海岸災害","風災","火災","橋梁毀損","道路中斷","建物倒塌","其他"];
+
+const DEFAULT_PROMPT = document.getElementById('promptTextarea').value;
+
+const LAST_ALBUM_KEY = 'disasterPhotoTaggerLastAlbumId';
+function newClientPhotoId(){
+  return (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+let albums = [];
+let currentAlbum = null;
+let geminiModel = 'gemini-2.5-flash';
+let currentPromptTemplate = DEFAULT_PROMPT;
+let promptVersion = 1;
+let promptLog = []; // {version, promptText, model, timestamp, results, rating, isBest, expanded}
+let promptLibrary = [];
+let activePromptRunId = null;
+let activePromptRunVersion = null;
+let activePromptId = null;
+let preferredPromptRunId = null;
+
+const TAG_CLASS = {
+  "淹水":"tag-water","海岸災害":"tag-water",
+  "崩塌":"tag-ground","地震":"tag-ground","土石流":"tag-ground","建物倒塌":"tag-ground","橋梁毀損":"tag-ground","道路中斷":"tag-ground",
+  "火災":"tag-fire","風災":"tag-fire",
+  "其他":"tag-other"
+};
+let MAX_FILES = 50;
+let MAX_UPLOAD_MB = 5;
+let MAX_SIZE = MAX_UPLOAD_MB * 1024 * 1024;
+let photos = [];
+let analyzing = false;
+let queuePollTimer = null;
+
+const todayStr = new Date().toISOString().slice(0,10);
+document.getElementById('todayStamp').textContent = todayStr;
+
+const grid = document.getElementById('grid');
+const emptyState = document.getElementById('emptyState');
+const fileInput = document.getElementById('fileInput');
+const tray = document.getElementById('tray');
+const counterEl = document.getElementById('counter');
+const runPromptBtn = document.getElementById('runPromptBtn');
+const cancelPromptBtn = document.getElementById('cancelPromptBtn');
+const exportCsvBtn = document.getElementById('exportCsvBtn');
+const downloadAllBtn = document.getElementById('downloadAllBtn');
+const progressBar = document.getElementById('progressBar');
+const toolbarMsg = document.getElementById('toolbarMsg');
+const trayHint = document.getElementById('trayHint');
+const toast = document.getElementById('toast');
+const workspace = document.getElementById('workspace');
+const albumSelect = document.getElementById('albumSelect');
+const albumSelectMeta = document.getElementById('albumSelectMeta');
+const newAlbumBtn = document.getElementById('newAlbumBtn');
+const renameAlbumBtn = document.getElementById('renameAlbumBtn');
+const deleteAlbumBtn = document.getElementById('deleteAlbumBtn');
+const albumCreateOverlay = document.getElementById('albumCreateOverlay');
+const albumCreateName = document.getElementById('albumCreateName');
+const albumCreateDescription = document.getElementById('albumCreateDescription');
+const albumCreateSubmit = document.getElementById('albumCreateSubmit');
+const promptTextareaEl = document.getElementById('promptTextarea');
+const promptNameInput = document.getElementById('promptNameInput');
+const promptLibrarySelect = document.getElementById('promptLibrarySelect');
+const promptActiveBadge = document.getElementById('promptActiveBadge');
+const runScopeList = document.getElementById('runScopeList');
+let runScopeSelection = new Set();
+
+const geminiModelSelect = document.getElementById('geminiModelSelect');
+geminiModelSelect.addEventListener('change', ()=>{ geminiModel = geminiModelSelect.value; });
+promptTextareaEl.addEventListener('input', ()=>{
+  preferredPromptRunId = null;
+  updatePromptBadge();
+});
+promptNameInput.addEventListener('input', updatePromptBadge);
+
+async function apiFetch(path, options={}){
+  const resp = await fetch(path, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    }
+  });
+  const data = await resp.json().catch(()=>({}));
+  if(!resp.ok){
+    throw new Error(data.error || data.message || `API request failed: ${resp.status}`);
+  }
+  return data;
+}
+
+async function loadAppConfig(){
+  try{
+    const config = await apiFetch('/api/config');
+    if(config.model){
+      geminiModel = config.model;
+      geminiModelSelect.value = geminiModel;
+    }
+    if(config.maxPhotosPerAlbum){
+      MAX_FILES = Number(config.maxPhotosPerAlbum) || MAX_FILES;
+    }
+    if(config.maxUploadMb){
+      MAX_UPLOAD_MB = Number(config.maxUploadMb) || MAX_UPLOAD_MB;
+      MAX_SIZE = MAX_UPLOAD_MB * 1024 * 1024;
+    }
+    trayHint.innerHTML = `<b>拖曳照片到這裡</b>，或點擊選擇檔案・最多 ${MAX_FILES} 張・單張上限 ${MAX_UPLOAD_MB}MB`;
+    counterEl.textContent = `${photos.length} / ${MAX_FILES} 張`;
+  }catch(err){
+    console.warn('App config could not be loaded', err);
+  }
+}
+
+function setAlbumPanelOpen(open){
+  if(currentAlbum) albumSelect.value = String(currentAlbum.id);
+  renderAlbumSelectMeta();
+}
+
+function updatePromptVersionLabel(){
+  const versionLabel = document.getElementById('promptVersionLabel');
+  if(versionLabel) versionLabel.textContent = promptVersion;
+  updatePromptBadge();
+}
+
+function updateAlbumContext(){
+  if(!currentAlbum) return;
+  const best = currentAlbum.bestPromptRun ? `・最佳 ${currentAlbum.bestPromptRun.label}` : '';
+  const photoCount = currentAlbum.photoCount ?? photos.length;
+  const promptRunCount = currentAlbum.promptRunCount ?? promptLog.length;
+  albumSelectMeta.textContent = `${currentAlbum.description || '沒有描述'}｜${photoCount} 張照片｜${promptRunCount} 筆 Prompt Run${best}`;
+}
+
+function renderAlbums(){
+  if(!albums.length){
+    albumSelect.innerHTML = '<option value="">目前沒有相簿</option>';
+    albumSelect.disabled = true;
+    albumSelectMeta.textContent = '請先新增相簿。';
+    return;
+  }
+  albumSelect.disabled = false;
+  albumSelect.innerHTML = albums.map(album=>`<option value="${album.id}">${escapeHtml(album.name)}</option>`).join('');
+  if(currentAlbum) albumSelect.value = String(currentAlbum.id);
+  renderAlbumSelectMeta();
+  renderRunScopeList();
+}
+
+function renderRunScopeList(){
+  if(!runScopeList) return;
+  if(!albums.length){
+    runScopeList.innerHTML = '<div class="extraction-hint">尚無相簿</div>';
+    return;
+  }
+  const validIds = new Set(albums.map(album=>String(album.id)));
+  runScopeSelection = new Set([...runScopeSelection].filter(id=>validIds.has(String(id))));
+  runScopeList.innerHTML = albums.map(album=>{
+    const isCurrent = currentAlbum && String(album.id) === String(currentAlbum.id);
+    const checked = isCurrent || runScopeSelection.has(String(album.id));
+    return `<label class="run-scope-item ${isCurrent?'is-current':''}">
+      <input type="checkbox" value="${album.id}" ${checked?'checked':''} ${isCurrent?'disabled':''}>
+      ${escapeHtml(album.name)}（${album.photoCount || 0} 張）${isCurrent ? '<span class="run-scope-current-tag">目前</span>' : ''}
+    </label>`;
+  }).join('');
+  runScopeList.querySelectorAll('input[type="checkbox"]').forEach(input=>{
+    input.addEventListener('change', ()=>{
+      if(input.checked) runScopeSelection.add(String(input.value));
+      else runScopeSelection.delete(String(input.value));
+    });
+  });
+}
+
+function renderAlbumSelectMeta(){
+  const selected = albums.find(album=>String(album.id)===String(albumSelect.value)) || currentAlbum;
+  if(!selected){
+    albumSelectMeta.textContent = '';
+    return;
+  }
+  const best = selected.bestPromptRun ? selected.bestPromptRun.label : '尚未標記';
+  albumSelectMeta.textContent = `${selected.description || '沒有描述'}｜${selected.photoCount || 0} 張照片｜${selected.promptRunCount || 0} 筆 Prompt Run｜最佳：${best}`;
+}
+
+async function loadAlbums(){
+  try{
+    albums = await apiFetch('/api/albums');
+    renderAlbums();
+  }catch(err){
+    showToast('載入相簿列表失敗：' + (err.message || ''));
+  }
+}
+
+async function initializeAlbums(){
+  try{
+    albums = await apiFetch('/api/albums');
+    renderAlbums();
+    if(!albums.length){
+      albumSelectMeta.textContent = '尚未建立相簿，請先新增相簿後開始上傳照片。';
+      runPromptBtn.disabled = true;
+      return;
+    }
+    const lastAlbumId = Number(localStorage.getItem(LAST_ALBUM_KEY));
+    const preferred = albums.find(album=>album.id===lastAlbumId) || albums[0];
+    await openAlbum(preferred.id, {collapsePanel:true});
+  }catch(err){
+    showToast('初始化相簿失敗：' + (err.message || ''));
+  }
+}
+
+async function refreshCurrentAlbum(){
+  if(!currentAlbum) return;
+  currentAlbum = await apiFetch(`/api/albums/${currentAlbum.id}`);
+  updateAlbumContext();
+}
+
+async function openAlbum(albumId, options={}){
+  try{
+    if(queuePollTimer) clearTimeout(queuePollTimer);
+    analyzing = false;
+    currentAlbum = await apiFetch(`/api/albums/${albumId}`);
+    localStorage.setItem(LAST_ALBUM_KEY, String(albumId));
+    albumSelect.value = String(albumId);
+    photos = [];
+    promptLog = [];
+    activePromptRunId = null;
+    activePromptRunVersion = null;
+    preferredPromptRunId = null;
+    activePromptId = null;
+    promptVersion = 1;
+    updatePromptVersionLabel();
+    updateAlbumContext();
+    renderAlbumSelectMeta();
+    renderRunScopeList();
+    render();
+    renderPromptLog();
+    await loadPhotos();
+    await loadPromptRuns();
+    renderPromptLibrarySelect();
+    updatePromptBadge();
+    await refreshCurrentAlbum();
+  }catch(err){
+    showToast('開啟相簿失敗：' + (err.message || ''));
+  }
+}
+
+function openAlbumCreateModal(){
+  albumCreateName.value = '';
+  albumCreateDescription.value = '';
+  albumCreateOverlay.classList.add('show');
+  setTimeout(()=>albumCreateName.focus(), 0);
+}
+
+function closeAlbumCreateModal(){
+  albumCreateOverlay.classList.remove('show');
+}
+
+newAlbumBtn.addEventListener('click', openAlbumCreateModal);
+document.getElementById('albumCreateClose').addEventListener('click', closeAlbumCreateModal);
+document.getElementById('albumCreateCancel').addEventListener('click', closeAlbumCreateModal);
+albumCreateOverlay.addEventListener('click', e=>{ if(e.target===albumCreateOverlay) closeAlbumCreateModal(); });
+albumCreateName.addEventListener('keydown', e=>{
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    albumCreateSubmit.click();
+  }
+});
+albumCreateSubmit.addEventListener('click', async ()=>{
+  const name = albumCreateName.value.trim();
+  if(!name){ showToast('請輸入相簿名稱'); return; }
+  albumCreateSubmit.disabled = true;
+  try{
+    const album = await apiFetch('/api/albums', {
+      method:'POST',
+      body: JSON.stringify({name, description: albumCreateDescription.value.trim()})
+    });
+    closeAlbumCreateModal();
+    await loadAlbums();
+    await openAlbum(album.id);
+  }catch(err){
+    showToast('新增相簿失敗：' + (err.message || ''));
+  }finally{
+    albumCreateSubmit.disabled = false;
+  }
+});
+
+renameAlbumBtn.addEventListener('click', async ()=>{
+  if(!currentAlbum) return;
+  const name = (prompt('相簿新名稱：', currentAlbum.name) || '').trim();
+  if(!name || name === currentAlbum.name) return;
+  try{
+    await apiFetch(`/api/albums/${currentAlbum.id}`, {
+      method:'PATCH',
+      body: JSON.stringify({name})
+    });
+    await loadAlbums();
+    await openAlbum(currentAlbum.id);
+  }catch(err){
+    showToast('重新命名相簿失敗：' + (err.message || ''));
+  }
+});
+
+albumSelect.addEventListener('change', ()=>{
+  const albumId = Number(albumSelect.value);
+  renderAlbumSelectMeta();
+  if(albumId) openAlbum(albumId);
+});
+deleteAlbumBtn.addEventListener('click', async ()=>{
+  if(!currentAlbum) return;
+  if(!confirm(`確定刪除相簿「${currentAlbum.name}」？這會刪除相簿內所有照片、Prompt 測試紀錄與分析結果。`)) return;
+  try{
+    if(queuePollTimer) clearTimeout(queuePollTimer);
+    analyzing = false;
+    await apiFetch(`/api/albums/${currentAlbum.id}`, {method:'DELETE'});
+    localStorage.removeItem(LAST_ALBUM_KEY);
+    currentAlbum = null;
+    photos = [];
+    promptLog = [];
+    preferredPromptRunId = null;
+    render();
+    renderPromptLog();
+    await initializeAlbums();
+  }catch(err){
+    showToast('刪除相簿失敗：' + (err.message || ''));
+  }
+});
+
+async function createPromptRun(){
+  if(!currentAlbum) throw new Error('請先選擇相簿');
+  const run = await apiFetch(`/api/albums/${currentAlbum.id}/prompt-runs`, {
+    method:'POST',
+    body: JSON.stringify({
+      prompt_text: currentPromptTemplate,
+      model: geminiModel,
+      name: promptNameInput.value.trim(),
+      prompt_id: selectedPromptIdForSubmit()
+    })
+  });
+  activePromptRunId = run.id;
+  activePromptRunVersion = run.version;
+  promptVersion = Math.max(promptVersion, run.version + 1);
+  updatePromptVersionLabel();
+  return run;
+}
+
+async function ensurePromptRun(){
+  if(activePromptRunId) return {id: activePromptRunId, version: activePromptRunVersion};
+  return createPromptRun();
+}
+
+async function loadPromptRuns(){
+  if(!currentAlbum) return;
+  try{
+    promptLibrary = await apiFetch('/api/prompts');
+    promptLog = promptLibrary.flatMap(prompt=>
+      (prompt.runs || [])
+        .filter(run=>String(run.albumId)===String(currentAlbum.id))
+        .map(run=>({
+          ...run,
+          promptId: prompt.id,
+          promptVersion: prompt.version,
+          promptName: prompt.name || '',
+          promptText: prompt.promptText,
+          model: prompt.model || run.model,
+          expanded:false,
+          jsonOpen:false
+        }))
+    );
+    const maxVersion = promptLog.reduce((max, e)=>Math.max(max, Number(e.version)||0), 0);
+    promptVersion = maxVersion + 1;
+    updatePromptVersionLabel();
+    renderPromptLog();
+    renderPromptLibrarySelect();
+    updatePromptBadge();
+  }catch(err){
+    console.warn('Prompt run history could not be loaded', err);
+  }
+}
+
+async function savePromptRunState(entry){
+  if(!entry || !entry.id) return;
+  await apiFetch(`/api/prompt-runs/${entry.id}`, {
+    method:'PATCH',
+    body: JSON.stringify({
+      name: entry.name || '',
+      rating: entry.rating,
+      rating_note: entry.ratingNote || '',
+      is_best: entry.isBest
+    })
+  });
+}
+
+function debounce(fn, delay=500){
+  clearTimeout(fn._t);
+  fn._t = setTimeout(fn, delay);
+}
+
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>toast.classList.remove('show'), 2600);
+}
+
+/* View tabs: photo grid <-> map, inside photo-col */
+const tabGrid = document.getElementById('tabGrid');
+const tabMap = document.getElementById('tabMap');
+const gridView = document.getElementById('gridView');
+const mapView = document.getElementById('mapView');
+function setActiveView(view){
+  tabGrid.classList.toggle('active', view==='grid');
+  tabMap.classList.toggle('active', view==='map');
+  gridView.style.display = view==='grid' ? '' : 'none';
+  mapView.classList.toggle('active', view==='map');
+  if(view==='map') renderMap();
+}
+tabGrid.addEventListener('click', ()=>setActiveView('grid'));
+tabMap.addEventListener('click', ()=>setActiveView('map'));
+
+/* Collapsible prompt log bar (top of photo column) */
+const promptLogBar = document.getElementById('promptLogBar');
+const promptLogToggleBtn = document.getElementById('promptLogToggleBtn');
+function setPromptLogExpanded(expanded){
+  promptLogBar.classList.toggle('expanded', expanded);
+  promptLogToggleBtn.textContent = expanded ? '收合' : '展開';
+}
+document.getElementById('promptLogBarHead').addEventListener('click', (e)=>{
+  if(e.target === promptLogToggleBtn) return; // avoid double toggle from bubbling
+  setPromptLogExpanded(!promptLogBar.classList.contains('expanded'));
+});
+promptLogToggleBtn.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  setPromptLogExpanded(!promptLogBar.classList.contains('expanded'));
+});
+document.querySelectorAll('input[name="logScope"]').forEach(input=>{
+  input.addEventListener('change', renderPromptLog);
+});
+
+document.getElementById('pickBtn').addEventListener('click', ()=>fileInput.click());
+fileInput.addEventListener('change', e=>handleFiles(e.target.files));
+
+['dragover','dragenter'].forEach(ev=>tray.addEventListener(ev, e=>{e.preventDefault();tray.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>tray.addEventListener(ev, e=>{e.preventDefault();tray.classList.remove('drag');}));
+tray.addEventListener('drop', e=>{
+  e.preventDefault();
+  handleFiles(e.dataTransfer.files);
+});
+
+async function persistPhoto(p){
+  if(!currentAlbum) throw new Error('請先選擇相簿');
+  if(!p || p.persisted || !p.displayDataUrl) return;
+  const data = await apiFetch(`/api/albums/${currentAlbum.id}/photos`, {
+    method:'POST',
+    body: JSON.stringify({
+      client_photo_id: String(p.id),
+      filename: p.file && p.file.name ? p.file.name : `photo_${p.id}.jpg`,
+      image_base64: p.displayDataUrl.split(',')[1]
+    })
+  });
+  p.persisted = true;
+  p.imageUrl = data.image_url || data.imageUrl || '';
+}
+
+async function loadPhotos(){
+  if(!currentAlbum) return;
+  try{
+    const selectedRunParam = preferredPromptRunId ? `?prompt_run_id=${encodeURIComponent(String(preferredPromptRunId))}` : '';
+    const saved = await apiFetch(`/api/albums/${currentAlbum.id}/photos${selectedRunParam}`);
+    if(!Array.isArray(saved)) return;
+    photos = saved.map(item=>{
+      const id = String(item.id);
+      return {
+        id,
+        file:null,
+        originalUrl:item.imageUrl,
+        imageUrl:item.imageUrl,
+        displayDataUrl:item.imageUrl,
+        persisted:true,
+        status:item.status || 'pending',
+        tags:Array.isArray(item.tags) ? item.tags.slice(0,8) : [],
+        description:item.description || '',
+        location:item.location || '',
+        address:'',
+        event:'',
+        note:'',
+        confidence:item.confidence || '',
+        date: todayStr,
+        lat: typeof item.lat === 'number' ? item.lat : null,
+        lng: typeof item.lng === 'number' ? item.lng : null,
+        coordSource: typeof item.lat === 'number' && typeof item.lng === 'number' ? 'estimate' : '',
+        tagPanelOpen:false
+      };
+    });
+    render();
+  }catch(err){
+    console.warn('Saved photos could not be loaded', err);
+  }
+}
+
+async function deleteSavedPhotos(){
+  if(!currentAlbum) return;
+  await Promise.all(photos.map(p=>
+    apiFetch(`/api/albums/${currentAlbum.id}/photos/${encodeURIComponent(String(p.id))}`, {method:'DELETE'})
+  ));
+  await refreshCurrentAlbum();
+}
+
+document.getElementById('clearBtn').addEventListener('click', async ()=>{
+  if(!photos.length) return;
+  if(!confirm('確定要清除全部照片與辨識結果嗎？')) return;
+  try{ await deleteSavedPhotos(); }
+  catch(err){ showToast('清除後端照片失敗：' + (err.message || '')); }
+  photos.forEach(p=>{ if(p.originalUrl && p.originalUrl.startsWith('blob:')) URL.revokeObjectURL(p.originalUrl); });
+  photos = [];
+  await loadPromptRuns();
+  await refreshCurrentAlbum();
+  render();
+});
+
+async function deleteOnePhoto(id){
+  if(!currentAlbum) return;
+  const p = photos.find(x=>x.id===id);
+  if(!p) return;
+  if(!confirm(`確定刪除照片 #${p.id}？這會刪除這張照片在此相簿內的分析結果。`)) return;
+  try{
+    await apiFetch(`/api/albums/${currentAlbum.id}/photos/${encodeURIComponent(String(p.id))}`, {method:'DELETE'});
+    if(p.originalUrl && p.originalUrl.startsWith('blob:')) URL.revokeObjectURL(p.originalUrl);
+    photos = photos.filter(x=>x.id!==id);
+    await loadPromptRuns();
+    await refreshCurrentAlbum();
+    render();
+  }catch(err){
+    showToast('刪除照片失敗：' + (err.message || ''));
+  }
+}
+
+function handleFiles(fileList){
+  if(!currentAlbum){ showToast('請先選擇或新增相簿'); return; }
+  const incoming = Array.from(fileList);
+  let rejectedSize = 0;
+  let rejectedCount = 0;
+  for(const f of incoming){
+    if(!f.type.startsWith('image/')) continue;
+    if(photos.length >= MAX_FILES){ rejectedCount++; continue; }
+    if(f.size > MAX_SIZE){ rejectedSize++; continue; }
+    const id = newClientPhotoId();
+    photos.push({
+      id, file:f,
+      originalUrl: URL.createObjectURL(f),
+      imageUrl:'',
+      displayDataUrl: null,
+      persisted:false,
+      status:'pending', // pending, analyzing, done, error
+      tags:[], description:'', location:'', address:'', event:'', note:'',
+      confidence:'', date: todayStr,
+      lat:null, lng:null, coordSource:'', // 'verified' (manual entry), 'estimate' (AI visual), '' (none)
+      tagPanelOpen:false
+    });
+  }
+  if(rejectedSize>0) showToast(`已略過 ${rejectedSize} 張，超過 ${MAX_UPLOAD_MB}MB 上限`);
+  if(rejectedCount>0) showToast(`已達 50 張上限，略過 ${rejectedCount} 張`);
+  fileInput.value = '';
+  render();
+  preparePhotos();
+}
+
+async function preparePhotos(){
+  for(const p of photos){
+    if(!p.displayDataUrl) p.displayDataUrl = await resizeToDataUrl(p.file, 1400);
+    if(!p.persisted){
+      try{ await persistPhoto(p); }
+      catch(err){ showToast('儲存照片失敗，重整後可能不會保留：' + (err.message || '')); }
+    }
+    renderCard(p);
+  }
+  await refreshCurrentAlbum();
+}
+
+function blobToDataUrl(blob){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = e=>resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function ensurePhotoDataUrl(p){
+  if(p.displayDataUrl && p.displayDataUrl.startsWith('data:')) return p.displayDataUrl;
+  if(p.file){
+    p.displayDataUrl = await resizeToDataUrl(p.file, 1400);
+    return p.displayDataUrl;
+  }
+  if(p.imageUrl || p.displayDataUrl){
+    const resp = await fetch(p.imageUrl || p.displayDataUrl);
+    if(!resp.ok) throw new Error(`讀取已保存圖片失敗：${resp.status}`);
+    p.displayDataUrl = await blobToDataUrl(await resp.blob());
+    return p.displayDataUrl;
+  }
+  throw new Error('找不到圖片資料');
+}
+
+function resizeToDataUrl(file, maxDim){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = e=>{ img.src = e.target.result; };
+    reader.onerror = reject;
+    img.onload = ()=>{
+      let {width, height} = img;
+      if(width > maxDim || height > maxDim){
+        if(width > height){ height = Math.round(height * maxDim/width); width = maxDim; }
+        else{ width = Math.round(width * maxDim/height); height = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function render(){
+  grid.querySelectorAll('.card').forEach(c=>c.remove());
+  emptyState.style.display = photos.length ? 'none':'block';
+  photos.forEach(p=>renderCard(p));
+  counterEl.textContent = `${photos.length} / ${MAX_FILES} 張`;
+  runPromptBtn.disabled = photos.length===0 || analyzing;
+  const anyDone = photos.some(p=>p.status==='done');
+  exportCsvBtn.disabled = !anyDone;
+  downloadAllBtn.disabled = !anyDone;
+  renderMap();
+}
+
+function tagMarkup(p){
+  const chips = p.tags.map((t)=>{
+    const cls = TAG_CLASS[t] || 'tag-other';
+    return `<span class="tag ${cls}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}<span class="tag-x" data-act="remove-tag" data-id="${p.id}" data-tag="${escapeHtml(t)}">✕</span></span>`;
+  }).join('');
+  return chips + `<button class="tag-add-btn" data-act="toggle-add" data-id="${p.id}">+ 標籤</button>`;
+}
+
+function tagAddPanelMarkup(p){
+  const remaining = CONTROLLED_TAGS.filter(t=>!p.tags.includes(t));
+  const options = remaining.map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+  return `
+    <div class="tag-add-panel ${p.tagPanelOpen?'show':''}" data-id="${p.id}">
+      ${remaining.length ? `<select data-act="pick-tag" data-id="${p.id}"><option value="">選擇常用標籤…</option>${options}</select>` : ''}
+      <input type="text" placeholder="或輸入自訂標籤後按 Enter" data-act="custom-tag" data-id="${p.id}">
+    </div>`;
+}
+
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function formatDuration(seconds){
+  if(seconds === null || seconds === undefined || Number.isNaN(Number(seconds))) return '--';
+  const total = Math.max(0, Math.round(Number(seconds)));
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
+  if(mins >= 60){
+    const hours = Math.floor(mins / 60);
+    const remainMins = mins % 60;
+    return `${hours}小時${remainMins ? remainMins + '分' : ''}`;
+  }
+  return mins ? `${mins}分${String(secs).padStart(2,'0')}秒` : `${secs}秒`;
+}
+
+function statusLabel(st){
+  return {pending:'待辨識', analyzing:'辨識中…', done:'已完成', error:'辨識失敗'}[st] || st;
+}
+
+function renderCard(p){
+  let card = document.getElementById('card-'+p.id);
+  if(!card){
+    card = document.createElement('div');
+    card.className = 'card';
+    card.id = 'card-'+p.id;
+    grid.appendChild(card);
+  }
+  card.innerHTML = `
+    <div class="card-id">#${p.id}</div>
+    <div class="card-status st-${p.status}">${statusLabel(p.status)}</div>
+    <img class="card-thumb" src="${p.displayDataUrl || ''}" alt="" data-act="open-modal" data-id="${p.id}">
+    <div class="card-body">
+      <div class="card-tags">${tagMarkup(p)}</div>
+      ${tagAddPanelMarkup(p)}
+      ${p.location ? `<div class="card-loc">📍 ${escapeHtml(p.location)}${p.lat!=null ? (p.coordSource==='verified' ? ' · 已核實' : ' · AI推測') : ''}</div>` : ''}
+      <div class="card-desc">${escapeHtml(p.description) || (p.status==='error' ? '辨識失敗，可重試' : '尚未辨識')}</div>
+      <div class="card-foot">
+        <button class="btn btn-sm btn-outline" data-act="analyze" data-id="${p.id}">${p.status==='done'?'重新辨識':'辨識'}</button>
+        <button class="btn btn-sm btn-outline" data-act="download" data-id="${p.id}">下載</button>
+        <button class="btn btn-sm btn-outline" data-act="delete" data-id="${p.id}">刪除</button>
+      </div>
+    </div>
+  `;
+  card.querySelector('[data-act="open-modal"]').addEventListener('click', ()=>openModal(p.id));
+  card.querySelectorAll('button[data-act]').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const act = btn.dataset.act;
+      const id = btn.dataset.id;
+      if(act==='analyze') await analyzeOne(id);
+      if(act==='download') await downloadOne(id);
+      if(act==='delete') await deleteOnePhoto(id);
+      if(act==='toggle-add'){
+        const ph = photos.find(x=>x.id===id);
+        ph.tagPanelOpen = !ph.tagPanelOpen;
+        renderCard(ph);
+      }
+    });
+  });
+  card.querySelectorAll('[data-act="remove-tag"]').forEach(el=>{
+    el.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const id = el.dataset.id;
+      const tag = el.dataset.tag;
+      const ph = photos.find(x=>x.id===id);
+      ph.tags = ph.tags.filter(t=>t!==tag);
+      renderCard(ph);
+    });
+  });
+  const pickSelect = card.querySelector('[data-act="pick-tag"]');
+  if(pickSelect){
+    pickSelect.addEventListener('click', e=>e.stopPropagation());
+    pickSelect.addEventListener('change', ()=>{
+      const id = pickSelect.dataset.id;
+      const val = pickSelect.value;
+      if(!val) return;
+      const ph = photos.find(x=>x.id===id);
+      if(!ph.tags.includes(val)) ph.tags = [...ph.tags, val].slice(0,8);
+      ph.tagPanelOpen = true;
+      renderCard(ph);
+    });
+  }
+  const customInput = card.querySelector('[data-act="custom-tag"]');
+  if(customInput){
+    customInput.addEventListener('click', e=>e.stopPropagation());
+    customInput.addEventListener('keydown', e=>{
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        const id = customInput.dataset.id;
+        const val = customInput.value.trim();
+        if(!val) return;
+        const ph = photos.find(x=>x.id===id);
+        if(!ph.tags.includes(val)) ph.tags = [...ph.tags, val].slice(0,8);
+        ph.tagPanelOpen = true;
+        renderCard(ph);
+      }
+    });
+  }
+}
+
+runPromptBtn.addEventListener('click', runPromptTest);
+
+async function runPromptTest(){
+  if(photos.length===0){ showToast('請先上傳照片'); return; }
+  const textareaVal = promptTextareaEl.value.trim();
+  currentPromptTemplate = textareaVal || DEFAULT_PROMPT;
+  const targetAlbumIds = [String(currentAlbum.id), ...runScopeSelection].filter((id, idx, arr)=>arr.indexOf(id)===idx);
+  const promptId = selectedPromptIdForSubmit();
+  const promptName = promptNameInput.value.trim();
+  let queuedCount = 0;
+  for(const albumId of targetAlbumIds){
+    if(String(albumId) === String(currentAlbum.id)){
+      await queuePromptRun(photos.map(p=>p.id), {forceRerun:false, promptId, promptName});
+      queuedCount++;
+      continue;
+    }
+    const saved = await apiFetch(`/api/albums/${albumId}/photos`);
+    const ids = Array.isArray(saved) ? saved.map(item=>String(item.id)) : [];
+    if(!ids.length) continue;
+    await queueAlbumPromptRun(albumId, ids, {promptId, promptName});
+    queuedCount++;
+  }
+  if(queuedCount > 1) showToast(`已將同一份 Prompt 送入 ${queuedCount} 本相簿的 Queue`);
+}
+
+function logPromptRun(){
+  loadPromptRuns();
+}
+
+async function analyzeAll(){
+  await queuePromptRun(photos.map(p=>p.id), {forceRerun:false});
+}
+
+async function analyzeOne(id, silent){
+  const p = photos.find(x=>x.id===id);
+  if(!p) return;
+  const textareaVal = promptTextareaEl.value.trim();
+  currentPromptTemplate = textareaVal || DEFAULT_PROMPT;
+  const runContextId = preferredPromptRunId || activePromptRunId;
+  await queuePromptRun([id], {
+    forceRerun:false,
+    preferredRunId:runContextId,
+    replaceExistingJobs:p.status==='done' && !!runContextId,
+    silent
+  });
+}
+
+async function queuePromptRun(clientPhotoIds, options={}){
+  if(!currentAlbum){ showToast('請先選擇相簿'); return; }
+  if(!clientPhotoIds.length){ showToast('請先選擇照片'); return; }
+  if(queuePollTimer) clearTimeout(queuePollTimer);
+  analyzing = true;
+  activePromptRunId = null;
+  activePromptRunVersion = null;
+  progressBar.style.width = '0%';
+  toolbarMsg.textContent = '準備送入 Queue…';
+  cancelPromptBtn.disabled = true;
+  cancelPromptBtn.textContent = '取消辨識';
+  render();
+  try{
+    for(const id of clientPhotoIds){
+      const p = photos.find(x=>x.id===id);
+      if(!p) continue;
+      if(!p.persisted){
+        await ensurePhotoDataUrl(p);
+        await persistPhoto(p);
+      }
+      p.status = 'analyzing';
+      renderCard(p);
+    }
+
+    const data = await apiFetch(`/api/albums/${currentAlbum.id}/queue-analysis`, {
+      method:'POST',
+      body: JSON.stringify({
+        client_photo_ids: clientPhotoIds.map(String),
+        prompt_text: currentPromptTemplate,
+        model: geminiModel,
+        name: options.promptName || promptNameInput.value.trim(),
+        prompt_id: options.promptId || selectedPromptIdForSubmit(),
+        force_rerun: !!options.forceRerun,
+        preferred_run_id: options.preferredRunId || preferredPromptRunId,
+        replace_existing_jobs: !!options.replaceExistingJobs
+      })
+    });
+    if(data.reusedReason === 'completed' && !options.forceRerun){
+      const shouldRerun = confirm(`已存在相同 Prompt 的完成結果 v${data.version}。\n\n按「確定」會建立新版並重新分析；按「取消」會直接載入既有結果。`);
+      if(shouldRerun){
+        await queuePromptRun(clientPhotoIds, {...options, forceRerun:true});
+        return;
+      }
+    }
+    activePromptRunId = data.id;
+    activePromptRunVersion = data.version;
+    cancelPromptBtn.disabled = isRunTerminal(data.status);
+    cancelPromptBtn.textContent = '取消辨識';
+    if(data.reusedReason === 'active') showToast(`已有相同 Prompt Run 正在執行，已切換到 v${data.version} 進度`);
+    if(data.reusedReason === 'completed') showToast(`已有相同 Prompt Run 完成，已載入 v${data.version} 結果`);
+    setPromptLogExpanded(true);
+    applyPromptRunStatus(data);
+    if(isRunTerminal(data.status)){
+      await finishQueuedRun(data);
+      return;
+    }
+    pollPromptRunStatus(data.id);
+  }catch(err){
+    console.error(err);
+    analyzing = false;
+    cancelPromptBtn.disabled = true;
+    cancelPromptBtn.textContent = '取消辨識';
+    if(!options.silent) showToast('送入 Queue 失敗：' + (err.message || ''));
+    clientPhotoIds.forEach(id=>{
+      const p = photos.find(x=>x.id===id);
+      if(p && p.status==='analyzing') p.status = 'error';
+    });
+    render();
+  }
+}
+
+cancelPromptBtn.addEventListener('click', cancelActivePromptRun);
+
+async function cancelActivePromptRun(){
+  const runId = activePromptRunId || preferredPromptRunId;
+  if(!runId || cancelPromptBtn.disabled) return;
+  if(!confirm('確定取消這次辨識？尚未開始的照片會停止排隊；如果目前有一張正在送 Gemini，可能仍會完成那一張。')) return;
+  try{
+    if(queuePollTimer) clearTimeout(queuePollTimer);
+    cancelPromptBtn.disabled = true;
+    cancelPromptBtn.textContent = '取消中…';
+    toolbarMsg.textContent = '取消中，正在停止尚未開始的照片…';
+    const data = await apiFetch(`/api/prompt-runs/${runId}/cancel`, {method:'POST'});
+    applyPromptRunStatus(data);
+    if(isRunTerminal(data.status)){
+      await finishQueuedRun(data);
+    } else {
+      pollPromptRunStatus(runId);
+    }
+  }catch(err){
+    cancelPromptBtn.disabled = false;
+    cancelPromptBtn.textContent = '取消辨識';
+    showToast('取消辨識失敗：' + (err.message || ''));
+  }
+}
+
+async function queueAlbumPromptRun(albumId, clientPhotoIds, options={}){
+  return apiFetch(`/api/albums/${albumId}/queue-analysis`, {
+    method:'POST',
+    body: JSON.stringify({
+      client_photo_ids: clientPhotoIds.map(String),
+      prompt_text: currentPromptTemplate,
+      model: geminiModel,
+      name: options.promptName || promptNameInput.value.trim(),
+      prompt_id: options.promptId || selectedPromptIdForSubmit(),
+      force_rerun: !!options.forceRerun
+    })
+  });
+}
+
+async function pollPromptRunStatus(runId){
+  try{
+    const data = await apiFetch(`/api/prompt-runs/${runId}/status`);
+    if(String(activePromptRunId) !== String(runId)) return;
+    applyPromptRunStatus(data);
+    if(isRunTerminal(data.status)){
+      await finishQueuedRun(data);
+      return;
+    }
+    queuePollTimer = setTimeout(()=>pollPromptRunStatus(runId), 2000);
+  }catch(err){
+    console.error(err);
+    queuePollTimer = setTimeout(()=>pollPromptRunStatus(runId), 5000);
+  }
+}
+
+function applyPromptRunStatus(data){
+  activePromptRunId = data.id;
+  activePromptRunVersion = data.version;
+  if(data.promptId) activePromptId = data.promptId;
+  preferredPromptRunId = data.id;
+  cancelPromptBtn.disabled = isRunTerminal(data.status) || (data.progress && !data.progress.queued && !data.progress.running);
+  cancelPromptBtn.textContent = data.cancelRequested ? '取消中…' : '取消辨識';
+  const resultById = new Map((data.results||[]).map(result=>[String(result.id), result]));
+  const jobById = new Map((data.jobs||[]).map(job=>[String(job.id), job]));
+  photos.forEach(p=>{
+    const job = jobById.get(String(p.id));
+    if(job && ['queued','running'].includes(job.status)){
+      p.status = 'analyzing';
+      renderCard(p);
+      return;
+    }
+    const result = resultById.get(String(p.id));
+    if(result){
+      applyResultToPhoto(p, result);
+      p.status = 'done';
+      renderCard(p);
+      return;
+    }
+    if(job){
+      p.status = job.status === 'failed' ? 'error' : 'analyzing';
+      renderCard(p);
+    }
+  });
+  const progress = data.progress || {};
+  const total = progress.total || (data.results ? data.results.length : 0);
+  const done = progress.done || progress.completed || 0;
+  progressBar.style.width = total ? Math.round(done / total * 100) + '%' : '0%';
+  const tokens = data.tokenUsage || {};
+  toolbarMsg.textContent = `${runStatusLabel(data.status)} ${done} / ${total}｜耗時 ${formatDuration(data.durationSeconds)}｜Token input ${tokens.input||0} / output ${tokens.output||0} / total ${tokens.total||0}`;
+  renderMap();
+  const anyDone = photos.some(x=>x.status==='done');
+  exportCsvBtn.disabled = !anyDone;
+  downloadAllBtn.disabled = !anyDone;
+}
+
+function applyResultToPhoto(p, result){
+  p.tags = Array.isArray(result.tags) ? result.tags.slice(0,8) : [];
+  p.description = result.description || '';
+  p.location = (result.location && result.location !== '無法辨識地點') ? result.location : '';
+  p.confidence = result.confidence || '';
+  if(typeof result.lat === 'number' && typeof result.lng === 'number'){
+    p.lat = result.lat;
+    p.lng = result.lng;
+    p.coordSource = 'estimate';
+  } else {
+    p.lat = null; p.lng = null; p.coordSource = '';
+  }
+}
+
+async function finishQueuedRun(data){
+  if(queuePollTimer) clearTimeout(queuePollTimer);
+  analyzing = false;
+  progressBar.style.width = '100%';
+  cancelPromptBtn.disabled = true;
+  cancelPromptBtn.textContent = '取消辨識';
+  const tokens = data.tokenUsage || {};
+  toolbarMsg.textContent = `${runStatusLabel(data.status)}｜耗時 ${formatDuration(data.durationSeconds)}｜Token input ${tokens.input||0} / output ${tokens.output||0} / total ${tokens.total||0}`;
+  await loadPromptRuns();
+  await refreshCurrentAlbum();
+  activePromptRunId = null;
+  activePromptRunVersion = null;
+  render();
+}
+
+function isRunTerminal(status){
+  return ['completed','failed','cancelled','draft'].includes(status);
+}
+
+function runStatusLabel(status){
+  return {
+    draft:'尚未開始',
+    queued:'排隊中',
+    running:'辨識中',
+    completed:'完成',
+    failed:'部分或全部失敗',
+    cancelled:'已取消'
+  }[status] || status;
+}
+
+function renderPromptLibrarySelect(){
+  if(!promptLibrarySelect) return;
+  const currentValue = activePromptId ? String(activePromptId) : '';
+  promptLibrarySelect.innerHTML = '<option value="">新的 Prompt（尚未儲存）</option>' + promptLibrary.map(prompt=>{
+    const label = prompt.name ? `Prompt v${prompt.version}「${prompt.name}」` : `Prompt v${prompt.version}`;
+    return `<option value="${prompt.id}">${escapeHtml(label)}</option>`;
+  }).join('');
+  if(currentValue && promptLibrary.some(prompt=>String(prompt.id)===currentValue)){
+    promptLibrarySelect.value = currentValue;
+  } else {
+    promptLibrarySelect.value = '';
+  }
+}
+
+function updatePromptBadge(){
+  if(!promptActiveBadge) return;
+  const selected = promptLibrary.find(prompt=>String(prompt.id)===String(activePromptId || ''));
+  const text = promptTextareaEl.value.trim() || DEFAULT_PROMPT;
+  promptActiveBadge.classList.toggle('is-unsaved', !selected || selected.promptText !== text);
+  if(selected && selected.promptText === text){
+    promptActiveBadge.textContent = `使用中：Prompt v${selected.version}${selected.name ? '「'+selected.name+'」' : ''}`;
+  } else if(selected){
+    promptActiveBadge.textContent = `已修改 Prompt v${selected.version}（執行後會建立新 Prompt）`;
+  } else {
+    promptActiveBadge.textContent = '新的 Prompt（尚未儲存）';
+  }
+}
+
+function selectedPromptIdForSubmit(){
+  const text = promptTextareaEl.value.trim() || DEFAULT_PROMPT;
+  const selected = promptLibrary.find(prompt=>String(prompt.id)===String(activePromptId || ''));
+  if(selected && selected.promptText === text && selected.model === geminiModel){
+    return selected.id;
+  }
+  return null;
+}
+
+promptLibrarySelect.addEventListener('change', async ()=>{
+  const promptId = promptLibrarySelect.value;
+  if(!promptId){
+    activePromptId = null;
+    preferredPromptRunId = null;
+    promptNameInput.value = '';
+    updatePromptBadge();
+    await loadPhotos();
+    return;
+  }
+  const prompt = promptLibrary.find(item=>String(item.id)===String(promptId));
+  if(!prompt) return;
+  activePromptId = prompt.id;
+  promptTextareaEl.value = prompt.promptText;
+  promptNameInput.value = prompt.name || '';
+  currentPromptTemplate = prompt.promptText;
+  const currentRun = (prompt.runs || []).find(run=>currentAlbum && String(run.albumId)===String(currentAlbum.id));
+  preferredPromptRunId = currentRun ? currentRun.id : null;
+  updatePromptBadge();
+  await loadPhotos();
+});
+
+function extractJsonFromText(text){
+  let clean = text.trim().replace(/^```json/i,'').replace(/^```/,'').replace(/```$/,'').trim();
+  const jsonMatch = clean.match(/\{[\s\S]*\}/);
+  if(jsonMatch) clean = jsonMatch[0];
+  return JSON.parse(clean);
+}
+
+async function callGeminiImage(base64, prompt, photo){
+  if(!currentAlbum) throw new Error('請先選擇相簿');
+  await ensurePromptRun();
+  const data = await apiFetch(`/api/albums/${currentAlbum.id}/analyze`, {
+    method:"POST",
+    body: JSON.stringify({
+      run_id: activePromptRunId,
+      client_photo_id: String(photo.id),
+      filename: photo.file && photo.file.name ? photo.file.name : `photo_${photo.id}.jpg`,
+      image_base64: base64,
+      prompt_text: prompt,
+      model: geminiModel
+    })
+  });
+  if(data.run_id && !activePromptRunId) activePromptRunId = data.run_id;
+  return data.result;
+}
+
+/* ---------------- Map (Taiwan outline, real projected coordinates) ---------------- */
+let mapDrawn = false;
+function drawMapBase(){
+  const svg = document.getElementById('twMap');
+  const M = TW_MAP_DATA;
+  let shapes = M.main_paths.map(p=>`<path class="county-shape" data-name="${escapeHtml(p.name)}" d="${p.d}"></path>`).join('');
+  shapes += M.side_paths.map(p=>`<path class="county-shape" data-name="${escapeHtml(p.name)}" d="${p.d}"></path>`).join('');
+  let boxes = '';
+  for(const key in M.inset_boxes){
+    const b = M.inset_boxes[key];
+    boxes += `<rect class="inset-box" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="4"></rect>`;
+    boxes += `<text class="inset-label" x="${b.x+6}" y="${b.y+b.h+16}">${b.label}</text>`;
+  }
+  svg.innerHTML = shapes + boxes + '<g id="pinLayer"></g>';
+  mapDrawn = true;
+}
+
+function projectLatLng(lat, lng){
+  const M = TW_MAP_DATA;
+  const b = M.bbox;
+  if(lng>=b.minlon && lng<=b.maxlon && lat>=b.minlat && lat<=b.maxlat){
+    const x = (lng-b.minlon)/(b.maxlon-b.minlon)*M.W;
+    const y = (b.maxlat-lat)/(b.maxlat-b.minlat)*M.H;
+    return {x,y};
+  }
+  for(const key in M.side_transforms){
+    const t = M.side_transforms[key];
+    if(lng>=t.minlon && lng<=t.maxlon && lat>=t.minlat && lat<=t.maxlat){
+      const x = (lng-t.minlon)/(t.maxlon-t.minlon)*t.fw + t.offx;
+      const y = (t.maxlat-lat)/(t.maxlat-t.minlat)*t.fh + t.offy;
+      return {x,y};
+    }
+  }
+  return null;
+}
+
+function renderMap(){
+  if(!mapDrawn) drawMapBase();
+  const pinLayer = document.getElementById('pinLayer');
+  if(!pinLayer) return;
+  pinLayer.innerHTML = '';
+  const mapSide = document.getElementById('mapSide');
+  const offshoreNote = document.getElementById('offshoreNote');
+  const located = photos.filter(p=>p.lat!=null && p.lng!=null);
+  let outsideCount = 0;
+
+  located.forEach(p=>{
+    const pt = projectLatLng(p.lat, p.lng);
+    if(!pt){ outsideCount++; return; }
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class', 'pin ' + (p.coordSource==='verified' ? 'verified':'estimate'));
+    g.innerHTML = `<circle cx="${pt.x}" cy="${pt.y}" r="11"></circle><text x="${pt.x}" y="${pt.y+4}" text-anchor="middle" font-size="10">${p.id % 1000}</text>`;
+    g.addEventListener('click', ()=>openModal(p.id));
+    const title = document.createElementNS('http://www.w3.org/2000/svg','title');
+    title.textContent = `#${p.id} ${p.location||''}`;
+    g.appendChild(title);
+    pinLayer.appendChild(g);
+  });
+
+  offshoreNote.textContent = outsideCount>0 ? `另有 ${outsideCount} 筆定位超出地圖顯示範圍，未繪製於圖上。` : '';
+
+  if(located.length===0){
+    mapSide.innerHTML = '<div class="map-side-empty">尚無定位資料 — 辨識完成且含地點的照片會列在這裡。</div>';
+    return;
+  }
+  mapSide.innerHTML = located.map(p=>`
+    <div class="map-row" data-id="${p.id}">
+      <img src="${p.displayDataUrl||''}" alt="">
+      <div>
+        <div class="map-row-id">#${p.id}</div>
+        <div class="map-row-loc">${escapeHtml(p.location||'未命名地點')}</div>
+      </div>
+      <span class="map-row-badge ${p.coordSource==='verified'?'badge-verified':'badge-estimate'}">${p.coordSource==='verified'?'已核實':'AI推測'}</span>
+    </div>
+  `).join('');
+  mapSide.querySelectorAll('.map-row').forEach(row=>{
+    row.addEventListener('click', ()=>openModal(row.dataset.id));
+  });
+}
+
+/* ---------------- Prompt test log ---------------- */
+function renderPromptLog(){
+  const list = document.getElementById('promptLogList');
+  const empty = document.getElementById('promptLogEmpty');
+  const barHint = document.getElementById('promptLogBarHint');
+  const scope = (document.querySelector('input[name="logScope"]:checked') || {}).value || 'album';
+  const groups = promptLibrary.map(prompt=>{
+    const runs = (prompt.runs || [])
+      .filter(run=>scope === 'all' || (currentAlbum && String(run.albumId)===String(currentAlbum.id)))
+      .map(run=>({
+        ...run,
+        promptId: prompt.id,
+        promptVersion: prompt.version,
+        promptName: prompt.name || '',
+        promptText: prompt.promptText,
+        model: prompt.model || run.model
+      }));
+    return {prompt, runs};
+  }).filter(group=>group.runs.length);
+  const totalRuns = promptLibrary.reduce((sum, prompt)=>sum + (prompt.runs || []).length, 0);
+  const currentAlbumRuns = promptLog.length;
+
+  if(!groups.length){
+    empty.style.display = 'block';
+    list.innerHTML = '';
+    document.getElementById('exportPromptLogBtn').disabled = totalRuns === 0;
+    if(barHint) barHint.textContent = scope === 'all' ? '目前還沒有測試紀錄' : '目前相簿還沒有測試紀錄';
+    return;
+  }
+  empty.style.display = 'none';
+  document.getElementById('exportPromptLogBtn').disabled = totalRuns === 0;
+  if(barHint){
+    const bestEntry = promptLog.find(e=>e.isBest);
+    barHint.textContent = `共 ${totalRuns} 筆執行紀錄（目前相簿 ${currentAlbumRuns} 筆）` + (bestEntry ? `・目前相簿最佳：v${bestEntry.version}${bestEntry.name ? '「'+bestEntry.name+'」' : ''}` : '');
+  }
+
+  list.innerHTML = groups.map(({prompt, runs})=>{
+    const promptLabel = `Prompt v${prompt.version}${prompt.name ? '「'+prompt.name+'」' : ''}`;
+    const runBlocks = runs.map(entry=>{
+      const dt = new Date(entry.timestamp);
+      const timeLabel = `${dt.getMonth()+1}/${dt.getDate()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+      const sample = (entry.results || []).slice(0, entry.expanded ? entry.results.length : 3);
+      const tokens = entry.tokenUsage || {};
+      const tokenLabel = `Token input ${tokens.input||0} / output ${tokens.output||0} / total ${tokens.total||0}`;
+      const durationLabel = `耗時 ${formatDuration(entry.durationSeconds)}`;
+      const rows = sample.map(r=>`
+        <div class="log-sample-row">
+          <span class="log-sample-id">#${r.id}</span>
+          <span class="log-sample-tags">${(r.tags||[]).map(t=>`<span class="tag ${TAG_CLASS[t]||'tag-other'}">${escapeHtml(t)}</span>`).join('') || '<span class="extraction-hint">無標籤</span>'}</span>
+          <span class="log-sample-desc">${escapeHtml(r.description||'（無描述）')}</span>
+        </div>`).join('');
+      const moreCount = (entry.results || []).length - sample.length;
+      const isLoadedRun = String(preferredPromptRunId || '') === String(entry.id);
+      const loadRunLabel = isLoadedRun ? '已載入這次結果' : '載入這次結果';
+      const bestLabel = entry.isBest ? '取消標記' : '標記為最佳';
+      return `
+      <div class="log-run-item ${isLoadedRun ? 'is-loaded' : ''}" data-run-id="${entry.id}">
+        <div class="log-entry-head">
+          <div class="log-entry-title">
+            <span class="log-run-album">${escapeHtml(entry.albumName || '未知相簿')}</span>
+            <span class="log-version">Run v${entry.version}</span>
+            ${entry.isBest ? '<span class="best-badge">★ 目前相簿最佳</span>' : ''}
+            <span class="log-time">${timeLabel} · 共 ${(entry.results||[]).length} 張 · ${escapeHtml(entry.model||'')} · ${durationLabel} · ${tokenLabel}</span>
+          </div>
+          <div class="log-entry-actions">
+            <button class="btn btn-outline btn-sm log-action-btn ${isLoadedRun ? 'is-loaded' : ''}" data-act="load-run" data-run-id="${entry.id}">${loadRunLabel}</button>
+            <button class="btn btn-outline btn-sm" data-act="toggle-json" data-run-id="${entry.id}">${entry.jsonOpen ? '收合 JSON' : '查看 JSON'}</button>
+            <button class="btn btn-outline btn-sm log-action-btn ${entry.isBest ? 'is-best' : ''}" data-act="best" data-run-id="${entry.id}">${bestLabel}</button>
+          </div>
+        </div>
+        <div class="log-rating">
+          效果評分：
+          <button class="rate-btn ${entry.rating==='good'?'active-good':''}" data-act="rate" data-rate="good" data-run-id="${entry.id}">不錯</button>
+          <button class="rate-btn ${entry.rating==='bad'?'active-bad':''}" data-act="rate" data-rate="bad" data-run-id="${entry.id}">不理想</button>
+        </div>
+        <label class="log-rating-note-label">好／不好的原因（給開發團隊參考）</label>
+        <textarea class="log-rating-note" data-act="rating-note" data-run-id="${entry.id}" placeholder="例如：地點推測大多正確，但常常漏標土石流；或是描述文字太長，希望更精簡。">${escapeHtml(entry.ratingNote||'')}</textarea>
+        ${entry.jsonOpen ? `<pre class="log-json-view">${escapeHtml(JSON.stringify({promptVersion:prompt.version, promptName:prompt.name, albumName:entry.albumName, runVersion:entry.version, timestamp:entry.timestamp, completedAt:entry.completedAt, durationSeconds:entry.durationSeconds, model:entry.model, status:entry.status, rating:entry.rating, ratingNote:entry.ratingNote, isBest:entry.isBest, tokenUsage:entry.tokenUsage, promptText:prompt.promptText, resultCount:(entry.results||[]).length, results:entry.results||[]}, null, 2))}</pre>` : ''}
+        <div class="log-samples">${rows}</div>
+        ${moreCount>0 ? `<button class="btn btn-outline btn-sm" data-act="expand" data-run-id="${entry.id}">顯示全部 ${(entry.results||[]).length} 筆</button>` : (entry.expanded && (entry.results||[]).length>3 ? `<button class="btn btn-outline btn-sm" data-act="collapse" data-run-id="${entry.id}">收合</button>` : '')}
+      </div>`;
+    }).join('');
+    return `
+    <div class="prompt-log-entry ${runs.some(run=>run.isBest)?'is-best':''}" data-prompt-id="${prompt.id}">
+      <div class="log-entry-head">
+        <div class="log-entry-title">
+          <span class="log-version">${escapeHtml(promptLabel)}</span>
+          <input type="text" class="log-name-input" data-act="rename-prompt" data-prompt-id="${prompt.id}" value="${escapeHtml(prompt.name||'')}" placeholder="幫這份 Prompt 取個名字…">
+          <span class="log-time">共 ${runs.length} 次執行 · ${escapeHtml(prompt.model||'')}</span>
+        </div>
+        <div class="log-entry-actions">
+          <button class="btn btn-outline btn-sm" data-act="view-prompt" data-prompt-id="${prompt.id}">查看 Prompt 內容</button>
+          <button class="btn btn-outline btn-sm" data-act="delete-prompt" data-prompt-id="${prompt.id}">刪除 Prompt</button>
+        </div>
+      </div>
+      ${runBlocks}
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('button[data-act]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const act = btn.dataset.act;
+      const prompt = btn.dataset.promptId ? promptLibrary.find(p=>String(p.id)===String(btn.dataset.promptId)) : null;
+      const entry = btn.dataset.runId ? findPromptRunInLibrary(btn.dataset.runId) : null;
+      if(act==='best'){
+        if(!entry) return;
+        const makingBest = !entry.isBest;
+        promptLibrary.forEach(prompt=>(prompt.runs||[]).forEach(run=>{
+          if(String(run.albumId)===String(entry.albumId)) run.isBest=false;
+        }));
+        entry.isBest = makingBest;
+        try{ await savePromptRunState(entry); }
+        catch(err){ showToast('儲存最佳版本失敗：' + (err.message || '')); }
+        renderPromptLog();
+        if(makingBest) showToast(`已將 Run v${entry.version} 標記為該相簿最佳 Prompt`);
+      } else if(act==='rate'){
+        if(!entry) return;
+        entry.rating = entry.rating === btn.dataset.rate ? null : btn.dataset.rate;
+        try{ await savePromptRunState(entry); }
+        catch(err){ showToast('儲存評分失敗：' + (err.message || '')); }
+        renderPromptLog();
+      } else if(act==='expand'){
+        if(!entry) return;
+        entry.expanded = true;
+        renderPromptLog();
+      } else if(act==='collapse'){
+        if(!entry) return;
+        entry.expanded = false;
+        renderPromptLog();
+      } else if(act==='toggle-json'){
+        if(!entry) return;
+        entry.jsonOpen = !entry.jsonOpen;
+        renderPromptLog();
+      } else if(act==='view-prompt'){
+        if(prompt) showPromptViewer(prompt);
+      } else if(act==='delete-prompt'){
+        if(prompt) await deletePrompt(prompt);
+      } else if(act==='load-run'){
+        if(!entry) return;
+        await loadPromptRunResult(entry);
+      }
+    });
+  });
+
+  list.querySelectorAll('input[data-act="rename-prompt"]').forEach(inp=>{
+    inp.addEventListener('click', e=>e.stopPropagation());
+    inp.addEventListener('input', ()=>{
+      const prompt = promptLibrary.find(p=>String(p.id)===String(inp.dataset.promptId));
+      if(!prompt) return;
+      prompt.name = inp.value;
+      (prompt.runs || []).forEach(run=>{ run.name = inp.value; });
+      if(String(activePromptId || '') === String(prompt.id)){
+        promptNameInput.value = inp.value;
+        updatePromptBadge();
+      }
+      renderPromptLibrarySelect();
+      debounce(async ()=>{
+        const currentRun = (prompt.runs || []).find(run=>currentAlbum && String(run.albumId)===String(currentAlbum.id)) || (prompt.runs || [])[0];
+        if(!currentRun) return;
+        try{ await savePromptRunState(currentRun); }
+        catch(err){ showToast('儲存名稱失敗：' + (err.message || '')); }
+      });
+    });
+  });
+
+  list.querySelectorAll('textarea[data-act="rating-note"]').forEach(ta=>{
+    ta.addEventListener('click', e=>e.stopPropagation());
+    ta.addEventListener('input', ()=>{
+      const entry = findPromptRunInLibrary(ta.dataset.runId);
+      if(entry){
+        entry.ratingNote = ta.value;
+        debounce(async ()=>{
+          try{ await savePromptRunState(entry); }
+          catch(err){ showToast('儲存評分原因失敗：' + (err.message || '')); }
+        });
+      }
+    });
+  });
+}
+
+function findPromptRunInLibrary(runId){
+  for(const prompt of promptLibrary){
+    const run = (prompt.runs || []).find(item=>String(item.id)===String(runId));
+    if(run){
+      run.promptId = prompt.id;
+      run.promptVersion = prompt.version;
+      run.promptName = prompt.name || '';
+      run.promptText = prompt.promptText;
+      return run;
+    }
+  }
+  return promptLog.find(item=>String(item.id)===String(runId)) || null;
+}
+
+async function deletePrompt(prompt){
+  const runCount = (prompt.runs || []).length;
+  const label = `Prompt v${prompt.version}${prompt.name ? '「'+prompt.name+'」' : ''}`;
+  if(!confirm(`確定刪除 ${label}？\n這會刪除它在所有相簿的 ${runCount} 筆 Prompt Run 與 AI 分析結果，但不會刪除相簿和照片。`)) return;
+  try{
+    await apiFetch(`/api/prompts/${prompt.id}`, {method:'DELETE'});
+    promptLibrary = promptLibrary.filter(item=>String(item.id)!==String(prompt.id));
+    promptLog = promptLog.filter(item=>String(item.promptId)!==String(prompt.id));
+    if(String(activePromptId || '') === String(prompt.id)){
+      activePromptId = null;
+      preferredPromptRunId = null;
+      activePromptRunId = null;
+      activePromptRunVersion = null;
+      promptTextareaEl.value = DEFAULT_PROMPT;
+      promptNameInput.value = '';
+      currentPromptTemplate = DEFAULT_PROMPT;
+    }
+    renderPromptLibrarySelect();
+    updatePromptBadge();
+    renderPromptLog();
+    await loadPhotos();
+    await loadAlbums();
+    if(currentAlbum) await refreshCurrentAlbum();
+    showToast('已刪除 Prompt');
+  }catch(err){
+    showToast('刪除 Prompt 失敗：' + (err.message || ''));
+  }
+}
+
+async function loadPromptRunResult(entry){
+  const albumId = entry.albumId;
+  if(currentAlbum && String(albumId)!==String(currentAlbum.id)){
+    await openAlbum(albumId);
+  }
+  activePromptId = entry.promptId || activePromptId;
+  preferredPromptRunId = entry.id;
+  promptTextareaEl.value = entry.promptText;
+  promptNameInput.value = entry.promptName || entry.name || '';
+  currentPromptTemplate = entry.promptText;
+  renderPromptLibrarySelect();
+  updatePromptBadge();
+  await loadPhotos();
+  renderPromptLog();
+}
+
+const promptViewOverlay = document.getElementById('promptViewOverlay');
+const promptViewTitle = document.getElementById('promptViewTitle');
+const promptViewText = document.getElementById('promptViewText');
+const promptViewLoadBtn = document.getElementById('promptViewLoadBtn');
+document.getElementById('promptViewClose').addEventListener('click', ()=> promptViewOverlay.classList.remove('show'));
+promptViewOverlay.addEventListener('click', e=>{ if(e.target===promptViewOverlay) promptViewOverlay.classList.remove('show'); });
+
+function showPromptViewer(entry){
+  promptViewTitle.textContent = `Prompt v${entry.version}${entry.name ? '　'+entry.name : ''} 的內容`;
+  promptViewText.textContent = entry.promptText;
+  promptViewOverlay.classList.add('show');
+  promptViewLoadBtn.onclick = async ()=>{
+    activePromptId = entry.id;
+    promptTextareaEl.value = entry.promptText;
+    promptNameInput.value = entry.name || '';
+    currentPromptTemplate = entry.promptText;
+    const currentRun = (entry.runs || []).find(run=>currentAlbum && String(run.albumId)===String(currentAlbum.id));
+    preferredPromptRunId = currentRun ? currentRun.id : null;
+    renderPromptLibrarySelect();
+    updatePromptBadge();
+    promptViewOverlay.classList.remove('show');
+    await loadPhotos();
+    showToast(`已將 Prompt v${entry.version} 載入編輯框`);
+  };
+}
+
+document.getElementById('exportPromptLogBtn').addEventListener('click', ()=>{
+  const exportData = promptLibrary.map(prompt=>({
+    id:prompt.id,
+    version:prompt.version,
+    name:prompt.name,
+    promptText:prompt.promptText,
+    model:prompt.model,
+    runs:(prompt.runs || []).map(run=>({
+      id:run.id,
+      albumId:run.albumId,
+      albumName:run.albumName,
+      version:run.version,
+      timestamp:run.timestamp,
+      status:run.status,
+      rating:run.rating,
+      ratingNote:run.ratingNote,
+      isBest:run.isBest,
+      tokenUsage:run.tokenUsage,
+      resultCount:(run.results || []).length,
+      results:run.results || []
+    }))
+  }));
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], {type:'application/json;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `prompt_test_log_${todayStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  showToast('已匯出 Prompt 測試紀錄，可交給開發團隊參考');
+});
+
+document.getElementById('resetPromptBtn').addEventListener('click', ()=>{
+  promptTextareaEl.value = DEFAULT_PROMPT;
+  currentPromptTemplate = DEFAULT_PROMPT;
+  activePromptId = null;
+  preferredPromptRunId = null;
+  promptNameInput.value = '';
+  promptLibrarySelect.value = '';
+  updatePromptBadge();
+  loadPhotos();
+  showToast('已還原為預設 Prompt');
+});
+
+/* ---------------- Modal ---------------- */
+const overlay = document.getElementById('overlay');
+const modalImg = document.getElementById('modalImg');
+const modalInfo = document.getElementById('modalInfo');
+document.getElementById('modalClose').addEventListener('click', closeModal);
+overlay.addEventListener('click', e=>{ if(e.target===overlay) closeModal(); });
+
+function closeModal(){ overlay.classList.remove('show'); }
+
+function openModal(id){
+  const p = photos.find(x=>x.id===id);
+  if(!p) return;
+  modalImg.src = p.displayDataUrl;
+  modalInfo.innerHTML = `
+    <div class="modal-info-title">#${p.id} 資訊</div>
+    ${p.confidence ? `<div class="ai-note">AI 辨識信心度：${escapeHtml(p.confidence)}・標籤／地點僅供參考，請人工核實後再確認正式圖資。</div>` : ''}
+    <div class="field">
+      <label>調查日期</label>
+      <input type="date" id="f-date" value="${p.date}">
+    </div>
+    <div class="field-group">
+      <div class="field-group-title">地點資訊</div>
+      <div class="field">
+        <label>地點（AI 推測，可編輯）</label>
+        <input type="text" id="f-location" value="${escapeHtml(p.location)}" placeholder="例如：新北市烏來區">
+      </div>
+      <div class="field">
+        <label>詳細地址（如可確認可手動填寫）</label>
+        <input type="text" id="f-address" value="${escapeHtml(p.address)}" placeholder="尚無法由 AI 精確判斷，可手動輸入">
+      </div>
+      <div class="field">
+        <label>座標（${p.coordSource==='verified' ? '已由人工手動核實，可編輯' : p.coordSource==='estimate' ? 'AI 僅畫面推測，未核實，建議人工確認' : '尚無座標，可手動輸入'}）</label>
+        <div style="display:flex;gap:8px;">
+          <input type="number" step="0.0001" id="f-lat" value="${p.lat!=null?p.lat:''}" placeholder="緯度 例如 24.85">
+          <input type="number" step="0.0001" id="f-lng" value="${p.lng!=null?p.lng:''}" placeholder="經度 例如 121.55">
+        </div>
+        <div class="field-hint">填寫後會標示於上方「圖資地圖」，手動輸入視為已由人工核實。</div>
+      </div>
+    </div>
+    <div class="field-group">
+      <div class="field-group-title">災害判讀</div>
+      <div class="field">
+        <label>事件</label>
+        <input type="text" id="f-event" value="${escapeHtml(p.event)}">
+      </div>
+      <div class="field">
+        <label>標籤</label>
+        <div class="tag-picker" id="f-tags">
+          ${CONTROLLED_TAGS.map(t=>`<span class="tag-choice ${p.tags.includes(t)?'active':''}" data-tag="${t}">${t}</span>`).join('')}
+        </div>
+      </div>
+      <div class="field">
+        <label>說明</label>
+        <textarea id="f-desc" placeholder="AI 產生的簡短描述，可編輯">${escapeHtml(p.description)}</textarea>
+      </div>
+      <div class="field">
+        <label>現場補充說明</label>
+        <textarea id="f-note" placeholder="可手動輸入現場補充說明">${escapeHtml(p.note)}</textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" id="modalSave">儲存變更</button>
+      <button class="btn btn-amber btn-sm" id="modalDownload">下載（含資訊）</button>
+    </div>
+  `;
+  modalInfo.querySelectorAll('.tag-choice').forEach(el=>{
+    el.addEventListener('click', ()=>el.classList.toggle('active'));
+  });
+  document.getElementById('modalSave').addEventListener('click', ()=>{
+    p.date = document.getElementById('f-date').value;
+    p.location = document.getElementById('f-location').value;
+    p.address = document.getElementById('f-address').value;
+    p.event = document.getElementById('f-event').value;
+    p.description = document.getElementById('f-desc').value;
+    p.note = document.getElementById('f-note').value;
+    p.tags = Array.from(modalInfo.querySelectorAll('.tag-choice.active')).map(el=>el.dataset.tag);
+    const latVal = document.getElementById('f-lat').value;
+    const lngVal = document.getElementById('f-lng').value;
+    if(latVal!=='' && lngVal!==''){
+      p.lat = parseFloat(latVal);
+      p.lng = parseFloat(lngVal);
+      p.coordSource = 'verified'; // manual entry counts as human-verified
+    } else {
+      p.lat = null; p.lng = null; p.coordSource = '';
+    }
+    renderCard(p);
+    renderMap();
+    showToast('已儲存變更');
+  });
+  document.getElementById('modalDownload').addEventListener('click', ()=>downloadOne(p.id));
+  overlay.classList.add('show');
+}
+
+/* ---------------- Download with baked-in info ---------------- */
+async function buildCompositeCanvas(p){
+  return new Promise((resolve)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const coordLine = p.lat!=null ? `緯度：${p.lat}　經度：${p.lng}（${p.coordSource==='verified'?'已核實':'AI推測，未核實'}）` : '座標：未提供';
+      const footerLines = [
+        `#${p.id}   調查日期：${p.date || todayStr}`,
+        `地點：${p.location || '未提供'}${p.address ? '　地址：'+p.address : ''}`,
+        coordLine,
+        `事件：${p.event || '未提供'}`,
+        `標籤：${p.tags.join('、') || '無'}`,
+        `說明：${p.description || '無說明'}`
+      ];
+      if(p.note) footerLines.push(`補充：${p.note}`);
+      const padding = 20;
+      const lineHeight = 24;
+      const footerH = padding*2 + lineHeight*footerLines.length;
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height + footerH;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#F3EEE3';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img,0,0);
+      ctx.fillStyle = '#24211C';
+      ctx.font = '600 17px "Noto Sans TC", sans-serif';
+      let y = img.height + padding + 14;
+      footerLines.forEach((line, i)=>{
+        ctx.font = i===0 ? '700 17px "Noto Sans TC", sans-serif' : '400 16px "Noto Sans TC", sans-serif';
+        wrapText(ctx, line, padding, y, canvas.width - padding*2, lineHeight);
+        y += lineHeight * Math.ceil(ctx.measureText(line).width / (canvas.width - padding*2) || 1);
+      });
+      resolve(canvas);
+    };
+    img.src = p.displayDataUrl;
+  });
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight){
+  let line = '';
+  let curY = y;
+  for(const ch of text){
+    const test = line + ch;
+    if(ctx.measureText(test).width > maxWidth && line){
+      ctx.fillText(line, x, curY);
+      line = ch;
+      curY += lineHeight;
+    } else {
+      line = test;
+    }
+  }
+  ctx.fillText(line, x, curY);
+}
+
+async function downloadOne(id){
+  const p = photos.find(x=>x.id===id);
+  if(!p || !p.displayDataUrl) return;
+  const canvas = await buildCompositeCanvas(p);
+  canvas.toBlob(blob=>{
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `disaster_${p.id}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }, 'image/jpeg', 0.92);
+}
+
+downloadAllBtn.addEventListener('click', async ()=>{
+  const done = photos.filter(p=>p.status==='done' || p.description);
+  for(let i=0;i<done.length;i++){
+    await downloadOne(done[i].id);
+    await new Promise(r=>setTimeout(r, 350));
+  }
+  showToast(`已觸發 ${done.length} 張下載`);
+});
+
+exportCsvBtn.addEventListener('click', ()=>{
+  const rows = [["編號","調查日期","地點","地址","緯度","經度","座標狀態","事件","標籤","說明","現場補充說明","AI信心度"]];
+  photos.forEach(p=>{
+    const coordStatus = p.lat==null ? '無' : (p.coordSource==='verified' ? '已核實' : 'AI推測未核實');
+    rows.push([p.id, p.date, p.location, p.address, p.lat!=null?p.lat:'', p.lng!=null?p.lng:'', coordStatus, p.event, p.tags.join('、'), p.description, p.note, p.confidence]);
+  });
+  const csv = rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `disaster_photo_data_${todayStr}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+});
+
+async function boot(){
+  await loadAppConfig();
+  render();
+  await initializeAlbums();
+}
+
+boot();
+</script>
+</body>
+</html>
