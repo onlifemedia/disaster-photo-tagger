@@ -210,7 +210,6 @@
   .prompt-run-row{display:flex;flex-direction:column;gap:8px;flex-shrink:0;}
   .progress-wrap{height:7px;background:var(--line-soft);border-radius:4px;overflow:hidden;}
   .progress-bar{height:100%;width:0%;background:var(--teal);transition:width .25s;}
-  .toolbar-msg{font-size:11.5px;color:var(--ink-soft);font-family:'JetBrains Mono',monospace;}
   .counter-inline{
     font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-soft);
     background:var(--paper-deep);padding:6px 10px;border-radius:6px;white-space:nowrap;
@@ -236,7 +235,6 @@
     flex:1;min-width:260px;border:1.5px solid var(--line);border-radius:7px;padding:7px 10px;
     font-family:'Noto Sans TC',sans-serif;font-size:12.5px;background:var(--paper);color:var(--ink);
   }
-  .project-bar-hint{font-size:11.5px;color:var(--ink-soft);line-height:1.5;flex:1;min-width:240px;}
   .photo-toolbar{
     display:flex;align-items:center;gap:12px;flex-wrap:wrap;
     background:var(--white);border:1px solid var(--line-soft);border-radius:10px;
@@ -362,6 +360,7 @@
     margin-bottom:12px;flex-shrink:0;overflow:hidden;
   }
   .prompt-log-bar-head{
+    justify-content: space-between;
     display:flex;align-items:center;gap:10px;flex-wrap:wrap;
     padding:10px 14px;cursor:pointer;
   }
@@ -571,7 +570,7 @@
       <div class="prompt-col-label"><span class="step">PROMPT</span> 辨識指令</div>
       <div class="prompt-intro">上傳右側照片後，調整下面的 Prompt、幫它取個名字，按「執行」由後端呼叫 Gemini 進行辨識。每次執行都會存成一筆測試紀錄（在下方頁面可評分並寫下原因、標記最佳版本、匯出給開發團隊）。</div>
 
-      <div class="gemini-config-box">
+      <div class="gemini-config-box" style="display: none;">
         <div class="gemini-config-row">
           <select id="geminiModelSelect">
             <option value="gemini-2.5-flash">gemini-2.5-flash</option>
@@ -616,7 +615,6 @@
         <button class="btn btn-amber btn-lg" id="runPromptBtn" disabled>用這個 Prompt 辨識全部照片</button>
         <button class="btn btn-outline btn-sm" id="cancelPromptBtn" disabled>取消辨識</button>
         <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
-        <div class="toolbar-msg" id="toolbarMsg">尚未開始</div>
       </div>
     </aside>
 
@@ -629,21 +627,16 @@
           <button class="btn btn-outline btn-sm" id="renameAlbumBtn">重新命名</button>
           <button class="btn btn-outline btn-sm" id="deleteAlbumBtn">刪除相簿</button>
         </div>
-        <div class="project-bar-row">
-          <span class="project-bar-hint" id="albumSelectMeta">載入相簿中…</span>
-        </div>
       </div>
 
       <div class="prompt-log-bar" id="promptLogBar">
         <div class="prompt-log-bar-head" id="promptLogBarHead">
           <span class="prompt-log-bar-title">📋 Prompt 測試紀錄</span>
-          <span class="prompt-log-bar-hint" id="promptLogBarHint">目前還沒有測試紀錄</span>
           <button class="btn btn-outline btn-sm" id="promptLogToggleBtn">展開</button>
         </div>
         <div class="prompt-log-bar-body" id="promptLogBarBody">
           <div class="prompt-log-panel">
             <div class="prompt-log-head">
-              <div style="font-size:12.5px;color:var(--ink-soft);">每次執行辨識都會存成一筆紀錄，可自訂名稱、評分並寫下好／不好的原因、標記最佳版本，最後匯出給開發團隊決定要寫進正式系統的 Prompt。</div>
               <button class="btn btn-outline btn-sm" id="exportPromptLogBtn" disabled>匯出 Prompt 測試紀錄 (JSON)</button>
             </div>
             <div class="log-scope-filter">
@@ -797,12 +790,10 @@ const cancelPromptBtn = document.getElementById('cancelPromptBtn');
 const exportCsvBtn = document.getElementById('exportCsvBtn');
 const downloadAllBtn = document.getElementById('downloadAllBtn');
 const progressBar = document.getElementById('progressBar');
-const toolbarMsg = document.getElementById('toolbarMsg');
 const trayHint = document.getElementById('trayHint');
 const toast = document.getElementById('toast');
 const workspace = document.getElementById('workspace');
 const albumSelect = document.getElementById('albumSelect');
-const albumSelectMeta = document.getElementById('albumSelectMeta');
 const newAlbumBtn = document.getElementById('newAlbumBtn');
 const renameAlbumBtn = document.getElementById('renameAlbumBtn');
 const deleteAlbumBtn = document.getElementById('deleteAlbumBtn');
@@ -861,36 +852,21 @@ async function loadAppConfig(){
   }
 }
 
-function setAlbumPanelOpen(open){
-  if(currentAlbum) albumSelect.value = String(currentAlbum.id);
-  renderAlbumSelectMeta();
-}
-
 function updatePromptVersionLabel(){
   const versionLabel = document.getElementById('promptVersionLabel');
   if(versionLabel) versionLabel.textContent = promptVersion;
   updatePromptBadge();
 }
 
-function updateAlbumContext(){
-  if(!currentAlbum) return;
-  const best = currentAlbum.bestPromptRun ? `・最佳 ${currentAlbum.bestPromptRun.label}` : '';
-  const photoCount = currentAlbum.photoCount ?? photos.length;
-  const promptRunCount = currentAlbum.promptRunCount ?? promptLog.length;
-  albumSelectMeta.textContent = `${currentAlbum.description || '沒有描述'}｜${photoCount} 張照片｜${promptRunCount} 筆 Prompt Run${best}`;
-}
-
 function renderAlbums(){
   if(!albums.length){
     albumSelect.innerHTML = '<option value="">目前沒有相簿</option>';
     albumSelect.disabled = true;
-    albumSelectMeta.textContent = '請先新增相簿。';
     return;
   }
   albumSelect.disabled = false;
   albumSelect.innerHTML = albums.map(album=>`<option value="${album.id}">${escapeHtml(album.name)}</option>`).join('');
   if(currentAlbum) albumSelect.value = String(currentAlbum.id);
-  renderAlbumSelectMeta();
   renderRunScopeList();
 }
 
@@ -918,16 +894,6 @@ function renderRunScopeList(){
   });
 }
 
-function renderAlbumSelectMeta(){
-  const selected = albums.find(album=>String(album.id)===String(albumSelect.value)) || currentAlbum;
-  if(!selected){
-    albumSelectMeta.textContent = '';
-    return;
-  }
-  const best = selected.bestPromptRun ? selected.bestPromptRun.label : '尚未標記';
-  albumSelectMeta.textContent = `${selected.description || '沒有描述'}｜${selected.photoCount || 0} 張照片｜${selected.promptRunCount || 0} 筆 Prompt Run｜最佳：${best}`;
-}
-
 async function loadAlbums(){
   try{
     albums = await apiFetch('/api/albums');
@@ -942,7 +908,6 @@ async function initializeAlbums(){
     albums = await apiFetch('/api/albums');
     renderAlbums();
     if(!albums.length){
-      albumSelectMeta.textContent = '尚未建立相簿，請先新增相簿後開始上傳照片。';
       runPromptBtn.disabled = true;
       return;
     }
@@ -957,7 +922,6 @@ async function initializeAlbums(){
 async function refreshCurrentAlbum(){
   if(!currentAlbum) return;
   currentAlbum = await apiFetch(`/api/albums/${currentAlbum.id}`);
-  updateAlbumContext();
 }
 
 async function openAlbum(albumId, options={}){
@@ -975,8 +939,6 @@ async function openAlbum(albumId, options={}){
     activePromptId = null;
     promptVersion = 1;
     updatePromptVersionLabel();
-    updateAlbumContext();
-    renderAlbumSelectMeta();
     renderRunScopeList();
     render();
     renderPromptLog();
@@ -1048,7 +1010,6 @@ renameAlbumBtn.addEventListener('click', async ()=>{
 
 albumSelect.addEventListener('change', ()=>{
   const albumId = Number(albumSelect.value);
-  renderAlbumSelectMeta();
   if(albumId) openAlbum(albumId);
 });
 deleteAlbumBtn.addEventListener('click', async ()=>{
@@ -1556,7 +1517,6 @@ async function queuePromptRun(clientPhotoIds, options={}){
   activePromptRunId = null;
   activePromptRunVersion = null;
   progressBar.style.width = '0%';
-  toolbarMsg.textContent = '準備送入 Queue…';
   cancelPromptBtn.disabled = true;
   cancelPromptBtn.textContent = '取消辨識';
   render();
@@ -1629,7 +1589,6 @@ async function cancelActivePromptRun(){
     if(queuePollTimer) clearTimeout(queuePollTimer);
     cancelPromptBtn.disabled = true;
     cancelPromptBtn.textContent = '取消中…';
-    toolbarMsg.textContent = '取消中，正在停止尚未開始的照片…';
     const data = await apiFetch(`/api/prompt-runs/${runId}/cancel`, {method:'POST'});
     applyPromptRunStatus(data);
     if(isRunTerminal(data.status)){
@@ -1706,8 +1665,6 @@ function applyPromptRunStatus(data){
   const total = progress.total || (data.results ? data.results.length : 0);
   const done = progress.done || progress.completed || 0;
   progressBar.style.width = total ? Math.round(done / total * 100) + '%' : '0%';
-  const tokens = data.tokenUsage || {};
-  toolbarMsg.textContent = `${runStatusLabel(data.status)} ${done} / ${total}｜耗時 ${formatDuration(data.durationSeconds)}｜Token input ${tokens.input||0} / output ${tokens.output||0} / total ${tokens.total||0}`;
   renderMap();
   const anyDone = photos.some(x=>x.status==='done');
   exportCsvBtn.disabled = !anyDone;
@@ -1734,8 +1691,6 @@ async function finishQueuedRun(data){
   progressBar.style.width = '100%';
   cancelPromptBtn.disabled = true;
   cancelPromptBtn.textContent = '取消辨識';
-  const tokens = data.tokenUsage || {};
-  toolbarMsg.textContent = `${runStatusLabel(data.status)}｜耗時 ${formatDuration(data.durationSeconds)}｜Token input ${tokens.input||0} / output ${tokens.output||0} / total ${tokens.total||0}`;
   await loadPromptRuns();
   await refreshCurrentAlbum();
   activePromptRunId = null;
@@ -1968,16 +1923,10 @@ function renderPromptLog(){
     empty.style.display = 'block';
     list.innerHTML = '';
     document.getElementById('exportPromptLogBtn').disabled = totalRuns === 0;
-    if(barHint) barHint.textContent = scope === 'all' ? '目前還沒有測試紀錄' : '目前相簿還沒有測試紀錄';
     return;
   }
   empty.style.display = 'none';
   document.getElementById('exportPromptLogBtn').disabled = totalRuns === 0;
-  if(barHint){
-    const bestEntry = promptLog.find(e=>e.isBest);
-    barHint.textContent = `共 ${totalRuns} 筆執行紀錄（目前相簿 ${currentAlbumRuns} 筆）` + (bestEntry ? `・目前相簿最佳：v${bestEntry.version}${bestEntry.name ? '「'+bestEntry.name+'」' : ''}` : '');
-  }
-
   list.innerHTML = groups.map(({prompt, runs})=>{
     const promptLabel = `Prompt v${prompt.version}${prompt.name ? '「'+prompt.name+'」' : ''}`;
     const albumChips = albumChipsMarkup(runs);
@@ -2006,9 +1955,7 @@ function renderPromptLog(){
           <div class="log-entry-title">
             <span class="log-run-album">${escapeHtml(entry.albumName || '未知相簿')}</span>
             <span class="log-version">Run v${entry.version}</span>
-            <span class="log-run-repeat">第 ${albumRunIndex + 1} 次</span>
             ${entry.isBest ? '<span class="best-badge">★ 目前相簿最佳</span>' : ''}
-            <span class="log-time">${timeLabel} · 共 ${(entry.results||[]).length} 張 · ${escapeHtml(entry.model||'')} · ${durationLabel} · ${tokenLabel}</span>
           </div>
           <div class="log-entry-actions">
             <button class="btn btn-outline btn-sm log-action-btn ${isLoadedRun ? 'is-loaded' : ''}" data-act="load-run" data-run-id="${entry.id}">${loadRunLabel}</button>
@@ -2022,7 +1969,6 @@ function renderPromptLog(){
           <button class="rate-btn ${entry.rating==='good'?'active-good':''}" data-act="rate" data-rate="good" data-run-id="${entry.id}">不錯</button>
           <button class="rate-btn ${entry.rating==='bad'?'active-bad':''}" data-act="rate" data-rate="bad" data-run-id="${entry.id}">不理想</button>
         </div>
-        <label class="log-rating-note-label">好／不好的原因（給開發團隊參考）</label>
         <textarea class="log-rating-note" data-act="rating-note" data-run-id="${entry.id}" placeholder="例如：地點推測大多正確，但常常漏標土石流；或是描述文字太長，希望更精簡。">${escapeHtml(entry.ratingNote||'')}</textarea>
         ${entry.jsonOpen ? `<pre class="log-json-view">${escapeHtml(JSON.stringify({promptVersion:prompt.version, promptName:prompt.name, albumName:entry.albumName, runVersion:entry.version, timestamp:entry.timestamp, completedAt:entry.completedAt, durationSeconds:entry.durationSeconds, model:entry.model, status:entry.status, rating:entry.rating, ratingNote:entry.ratingNote, isBest:entry.isBest, tokenUsage:entry.tokenUsage, promptText:prompt.promptText, resultCount:(entry.results||[]).length, results:entry.results||[]}, null, 2))}</pre>` : ''}
         <div class="log-samples">${rows}</div>
@@ -2035,7 +1981,6 @@ function renderPromptLog(){
         <div class="log-entry-title">
           <span class="log-version">${escapeHtml(promptLabel)}</span>
           <input type="text" class="log-name-input" data-act="rename-prompt" data-prompt-id="${prompt.id}" value="${escapeHtml(prompt.name||'')}" placeholder="幫這份 Prompt 取個名字…">
-          <span class="log-time">共 ${runs.length} 次執行 · ${escapeHtml(prompt.model||'')}</span>
           <span class="album-chip-row">${albumChips}</span>
         </div>
         <div class="log-entry-actions">
