@@ -64,7 +64,7 @@ def create_app() -> Flask:
     load_dotenv(ROOT_DIR / ".env")
 
     app = Flask(__name__, static_folder=None)
-    max_upload_mb = env_int("MAX_UPLOAD_MB", 5, minimum=1)
+    max_upload_mb = env_int("MAX_UPLOAD_MB", 15, minimum=1)
     max_photos_per_album = env_int("MAX_PHOTOS_PER_ALBUM", 50, minimum=1)
     max_active_prompt_runs = env_int("MAX_ACTIVE_PROMPT_RUNS", 5, minimum=1)
     app.config["MAX_CONTENT_LENGTH"] = (max_upload_mb + 2) * 1024 * 1024
@@ -589,6 +589,24 @@ def create_app() -> Flask:
             data = serialize_prompt_run_status(db, run)
             data["cancelRequested"] = True
         return jsonify(data)
+
+    @app.delete("/api/prompt-runs/<int:run_id>")
+    def delete_prompt_run(run_id: int):
+        with connect(db_path) as db:
+            run = get_prompt_run_row(db, run_id)
+            db.execute("DELETE FROM analysis_jobs WHERE prompt_run_id = ?", (run_id,))
+            db.execute("DELETE FROM analysis_results WHERE prompt_run_id = ?", (run_id,))
+            db.execute("DELETE FROM prompt_runs WHERE id = ?", (run_id,))
+            db.commit()
+        return jsonify(
+            {
+                "ok": True,
+                "deleted": 1,
+                "id": run_id,
+                "promptId": row_value(run, "prompt_id"),
+                "albumId": row_value(run, "album_id"),
+            }
+        )
 
     @app.post("/api/chat-extract")
     def chat_extract():

@@ -21,7 +21,7 @@ class AlbumFlowTest(unittest.TestCase):
         os.environ["UPLOAD_DIR"] = str(root / "uploads")
         os.environ["GEMINI_API_KEY"] = "test-key"
         os.environ["QUEUE_WORKER_ENABLED"] = "0"
-        os.environ["MAX_UPLOAD_MB"] = "5"
+        os.environ["MAX_UPLOAD_MB"] = "15"
         os.environ["MAX_PHOTOS_PER_ALBUM"] = "50"
         os.environ["MAX_ACTIVE_PROMPT_RUNS"] = "5"
         os.environ["GEMINI_MIN_SECONDS_BETWEEN_REQUESTS"] = "0"
@@ -199,6 +199,59 @@ class AlbumFlowTest(unittest.TestCase):
         self.assertEqual(run_count, 0)
         self.assertEqual(job_count, 0)
         self.assertEqual(result_count, 0)
+
+    def test_delete_prompt_run_removes_single_run_but_keeps_prompt_photos_and_other_runs(self):
+        album_id = self._create_album("Delete Single Run")
+        self._create_photo(album_id, "p1")
+        raw_response = {"usageMetadata": {"promptTokenCount": 1, "candidatesTokenCount": 1, "totalTokenCount": 2}}
+
+        first = self._queue_analysis(album_id, ["p1"], "shared prompt")
+        with patch(
+            "app.main.call_gemini_image",
+            return_value=({"tags": ["淹水"], "description": "v1", "confidence": "high"}, raw_response),
+        ):
+            self.assertTrue(self.app.config["ANALYSIS_WORKER"].process_one())
+
+        second = self._queue_analysis(album_id, ["p1"], "shared prompt", force_rerun=True)
+        with patch(
+            "app.main.call_gemini_image",
+            return_value=({"tags": ["火災"], "description": "v2", "confidence": "high"}, raw_response),
+        ):
+            self.assertTrue(self.app.config["ANALYSIS_WORKER"].process_one())
+
+        resp = self.client.delete(f"/api/prompt-runs/{first['id']}")
+        self.assertEqual(resp.status_code, 200, resp.get_data(as_text=True))
+        self.assertEqual(resp.get_json()["promptId"], first["promptId"])
+
+        runs = self.client.get(f"/api/albums/{album_id}/prompt-runs").get_json()
+        self.assertEqual([run["id"] for run in runs], [second["id"]])
+        self.assertEqual(runs[0]["results"][0]["description"], "v2")
+
+        prompts = self.client.get("/api/prompts").get_json()
+        prompt = next(item for item in prompts if item["id"] == first["promptId"])
+        self.assertEqual([run["id"] for run in prompt["runs"]], [second["id"]])
+        self.assertEqual(len(self.client.get(f"/api/albums/{album_id}/photos").get_json()), 1)
+
+        with closing(sqlite3.connect(self.db_path)) as db:
+            prompt_count = db.execute("SELECT COUNT(*) FROM prompts WHERE id = ?", (first["promptId"],)).fetchone()[0]
+            first_run_count = db.execute("SELECT COUNT(*) FROM prompt_runs WHERE id = ?", (first["id"],)).fetchone()[0]
+            first_job_count = db.execute(
+                "SELECT COUNT(*) FROM analysis_jobs WHERE prompt_run_id = ?",
+                (first["id"],),
+            ).fetchone()[0]
+            first_result_count = db.execute(
+                "SELECT COUNT(*) FROM analysis_results WHERE prompt_run_id = ?",
+                (first["id"],),
+            ).fetchone()[0]
+            second_result_count = db.execute(
+                "SELECT COUNT(*) FROM analysis_results WHERE prompt_run_id = ?",
+                (second["id"],),
+            ).fetchone()[0]
+        self.assertEqual(prompt_count, 1)
+        self.assertEqual(first_run_count, 0)
+        self.assertEqual(first_job_count, 0)
+        self.assertEqual(first_result_count, 0)
+        self.assertEqual(second_result_count, 1)
 
     def test_worker_records_token_usage_and_completed_status(self):
         album_id = self._create_album("Queue Tokens")

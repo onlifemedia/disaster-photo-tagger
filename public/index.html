@@ -223,7 +223,7 @@
     flex-direction:column;
     padding:18px;
     min-width:0;
-    overflow:hidden;
+    overflow-y:auto;
   }
   .project-bar{
     background:var(--white);border:1px solid var(--line-soft);border-radius:10px;
@@ -257,7 +257,7 @@
   .tray-mini-text b{font-weight:700;}
   .photo-toolbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 
-  .grid-wrap{flex:1;overflow-y:auto;min-height:0;}
+  .grid-wrap{flex:0 0 auto;overflow:visible;min-height:0;}
 
   /* View tabs (grid <-> map, inside photo-col) */
   .view-tabs{display:flex;gap:6px;margin-bottom:10px;flex-shrink:0;}
@@ -267,7 +267,7 @@
     background:var(--white);color:var(--ink-soft);cursor:pointer;
   }
   .view-tab.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
-  .map-in-col{flex:1;min-height:0;overflow-y:auto;display:none;}
+  .map-in-col{flex:0 0 auto;min-height:0;overflow:visible;display:none;}
   .map-in-col.active{display:block;}
 
   .grid{
@@ -420,8 +420,29 @@
   .prompt-log-entry.is-best{border-color:var(--amber);background:#FBF6EA;box-shadow:0 0 0 1px var(--amber) inset;}
   .log-scope-filter{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft);margin-bottom:14px;padding-bottom:12px;border-bottom:1px dashed var(--line);}
   .log-scope-filter label{display:flex;align-items:center;gap:5px;cursor:pointer;}
-  .log-run-item{border-top:1px dashed var(--line);padding-top:10px;margin-top:10px;}
-  .log-run-album{font-weight:700;font-size:12.5px;color:var(--ink);}
+  .log-run-item{
+    border-top:1px dashed var(--line);border-left:4px solid var(--line);
+    padding:10px 0 0 10px;margin-top:10px;
+  }
+  .log-run-item.run-tone-1{border-left-color:var(--teal);background:rgba(30,89,81,0.035);}
+  .log-run-item.run-tone-2{border-left-color:var(--amber);background:rgba(198,121,30,0.045);}
+  .log-run-item.run-tone-3{border-left-color:var(--rust);background:rgba(169,62,44,0.035);}
+  .log-run-item.run-tone-4{border-left-color:#6B5F2A;background:rgba(107,95,42,0.035);}
+  .log-run-item.run-tone-5{border-left-color:#2F6F8F;background:rgba(47,111,143,0.035);}
+  .album-chip-row{display:flex;gap:6px;flex-wrap:wrap;width:100%;margin-top:2px;}
+  .album-chip{
+    display:inline-flex;align-items:center;gap:5px;
+    font-size:11px;font-weight:700;color:var(--teal);
+    background:#DCEAE6;border:1px solid rgba(30,89,81,0.22);
+    padding:2px 8px;border-radius:20px;
+  }
+  .album-chip b{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-soft);}
+  .log-run-album{
+    display:inline-flex;align-items:center;font-weight:700;font-size:12px;
+    color:var(--teal);background:#DCEAE6;border:1px solid rgba(30,89,81,0.22);
+    padding:2px 8px;border-radius:20px;
+  }
+  .log-run-repeat{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-soft);}
   .log-entry-head{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px;}
   .log-entry-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .log-version{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;color:var(--ink);}
@@ -437,6 +458,8 @@
   .log-entry-actions{display:flex;gap:8px;flex-wrap:wrap;}
   .log-action-btn.is-loaded{background:#DCEAE6;border-color:var(--teal);color:var(--teal);}
   .log-action-btn.is-best{background:#FBEAC7;border-color:var(--amber);color:var(--amber-deep);}
+  .log-action-btn.is-danger{border-color:#E7B5AC;color:var(--rust);}
+  .log-action-btn.is-danger:hover{border-color:var(--rust);background:#F4D9D3;}
   .log-rating{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-soft);margin-bottom:6px;flex-wrap:wrap;}
   .rate-btn{border:1.5px solid var(--line);background:var(--white);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;}
   .rate-btn.active-good{background:#DCEAE6;border-color:var(--teal);color:var(--teal);}
@@ -638,7 +661,7 @@
           <div class="tray-mini-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </div>
-          <div class="tray-mini-text" id="trayHint"><b>拖曳照片到這裡</b>，或點擊選擇檔案・最多 50 張・單張上限 5MB</div>
+          <div class="tray-mini-text" id="trayHint"><b>拖曳照片到這裡</b>，或點擊選擇檔案・最多 50 張・單張上限 15MB</div>
         </div>
         <div class="photo-toolbar-actions">
           <span class="counter-inline" id="counter">0 / 50 張</span>
@@ -755,7 +778,7 @@ const TAG_CLASS = {
   "其他":"tag-other"
 };
 let MAX_FILES = 50;
-let MAX_UPLOAD_MB = 5;
+let MAX_UPLOAD_MB = 15;
 let MAX_SIZE = MAX_UPLOAD_MB * 1024 * 1024;
 let photos = [];
 let analyzing = false;
@@ -1900,6 +1923,26 @@ function renderMap(){
 }
 
 /* ---------------- Prompt test log ---------------- */
+function albumChipsMarkup(runs){
+  const byAlbum = new Map();
+  runs.forEach(run=>{
+    const key = String(run.albumId || '');
+    if(!key) return;
+    const current = byAlbum.get(key) || {name:run.albumName || '未知相簿', count:0};
+    current.count += 1;
+    byAlbum.set(key, current);
+  });
+  return [...byAlbum.values()].map(album=>
+    `<span class="album-chip">${escapeHtml(album.name)}<b>${album.count}</b></span>`
+  ).join('');
+}
+
+function sameAlbumRunIndex(entry, runs){
+  const sameAlbumRuns = runs.filter(run=>String(run.albumId)===String(entry.albumId));
+  const index = sameAlbumRuns.findIndex(run=>String(run.id)===String(entry.id));
+  return Math.max(index, 0);
+}
+
 function renderPromptLog(){
   const list = document.getElementById('promptLogList');
   const empty = document.getElementById('promptLogEmpty');
@@ -1937,7 +1980,10 @@ function renderPromptLog(){
 
   list.innerHTML = groups.map(({prompt, runs})=>{
     const promptLabel = `Prompt v${prompt.version}${prompt.name ? '「'+prompt.name+'」' : ''}`;
+    const albumChips = albumChipsMarkup(runs);
     const runBlocks = runs.map(entry=>{
+      const albumRunIndex = sameAlbumRunIndex(entry, runs);
+      const runToneClass = `run-tone-${albumRunIndex % 5 + 1}`;
       const dt = new Date(entry.timestamp);
       const timeLabel = `${dt.getMonth()+1}/${dt.getDate()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
       const sample = (entry.results || []).slice(0, entry.expanded ? entry.results.length : 3);
@@ -1955,11 +2001,12 @@ function renderPromptLog(){
       const loadRunLabel = isLoadedRun ? '已載入這次結果' : '載入這次結果';
       const bestLabel = entry.isBest ? '取消標記' : '標記為最佳';
       return `
-      <div class="log-run-item ${isLoadedRun ? 'is-loaded' : ''}" data-run-id="${entry.id}">
+      <div class="log-run-item ${isLoadedRun ? 'is-loaded' : ''} ${runToneClass}" data-run-id="${entry.id}">
         <div class="log-entry-head">
           <div class="log-entry-title">
             <span class="log-run-album">${escapeHtml(entry.albumName || '未知相簿')}</span>
             <span class="log-version">Run v${entry.version}</span>
+            <span class="log-run-repeat">第 ${albumRunIndex + 1} 次</span>
             ${entry.isBest ? '<span class="best-badge">★ 目前相簿最佳</span>' : ''}
             <span class="log-time">${timeLabel} · 共 ${(entry.results||[]).length} 張 · ${escapeHtml(entry.model||'')} · ${durationLabel} · ${tokenLabel}</span>
           </div>
@@ -1967,6 +2014,7 @@ function renderPromptLog(){
             <button class="btn btn-outline btn-sm log-action-btn ${isLoadedRun ? 'is-loaded' : ''}" data-act="load-run" data-run-id="${entry.id}">${loadRunLabel}</button>
             <button class="btn btn-outline btn-sm" data-act="toggle-json" data-run-id="${entry.id}">${entry.jsonOpen ? '收合 JSON' : '查看 JSON'}</button>
             <button class="btn btn-outline btn-sm log-action-btn ${entry.isBest ? 'is-best' : ''}" data-act="best" data-run-id="${entry.id}">${bestLabel}</button>
+            <button class="btn btn-outline btn-sm log-action-btn is-danger" data-act="delete-run" data-run-id="${entry.id}">刪除此結果</button>
           </div>
         </div>
         <div class="log-rating">
@@ -1988,6 +2036,7 @@ function renderPromptLog(){
           <span class="log-version">${escapeHtml(promptLabel)}</span>
           <input type="text" class="log-name-input" data-act="rename-prompt" data-prompt-id="${prompt.id}" value="${escapeHtml(prompt.name||'')}" placeholder="幫這份 Prompt 取個名字…">
           <span class="log-time">共 ${runs.length} 次執行 · ${escapeHtml(prompt.model||'')}</span>
+          <span class="album-chip-row">${albumChips}</span>
         </div>
         <div class="log-entry-actions">
           <button class="btn btn-outline btn-sm" data-act="view-prompt" data-prompt-id="${prompt.id}">查看 Prompt 內容</button>
@@ -2036,6 +2085,8 @@ function renderPromptLog(){
         if(prompt) showPromptViewer(prompt);
       } else if(act==='delete-prompt'){
         if(prompt) await deletePrompt(prompt);
+      } else if(act==='delete-run'){
+        if(entry) await deletePromptRun(entry);
       } else if(act==='load-run'){
         if(!entry) return;
         await loadPromptRunResult(entry);
@@ -2094,9 +2145,7 @@ function findPromptRunInLibrary(runId){
 }
 
 async function deletePrompt(prompt){
-  const runCount = (prompt.runs || []).length;
-  const label = `Prompt v${prompt.version}${prompt.name ? '「'+prompt.name+'」' : ''}`;
-  if(!confirm(`確定刪除 ${label}？\n這會刪除它在所有相簿的 ${runCount} 筆 Prompt Run 與 AI 分析結果，但不會刪除相簿和照片。`)) return;
+  if(!confirm('確定要刪除此prompt嗎，刪除後將無法復原！')) return;
   try{
     await apiFetch(`/api/prompts/${prompt.id}`, {method:'DELETE'});
     promptLibrary = promptLibrary.filter(item=>String(item.id)!==String(prompt.id));
@@ -2119,6 +2168,37 @@ async function deletePrompt(prompt){
     showToast('已刪除 Prompt');
   }catch(err){
     showToast('刪除 Prompt 失敗：' + (err.message || ''));
+  }
+}
+
+async function deletePromptRun(entry){
+  if(!confirm('確定要刪除此次辨識結果嗎，刪除後將無法復原！')) return;
+  try{
+    if(String(activePromptRunId || '') === String(entry.id) && queuePollTimer){
+      clearTimeout(queuePollTimer);
+    }
+    await apiFetch(`/api/prompt-runs/${entry.id}`, {method:'DELETE'});
+    promptLibrary.forEach(prompt=>{
+      prompt.runs = (prompt.runs || []).filter(run=>String(run.id)!==String(entry.id));
+    });
+    promptLog = promptLog.filter(run=>String(run.id)!==String(entry.id));
+    if(String(activePromptRunId || '') === String(entry.id)){
+      activePromptRunId = null;
+      activePromptRunVersion = null;
+      analyzing = false;
+    }
+    if(String(preferredPromptRunId || '') === String(entry.id)){
+      preferredPromptRunId = null;
+    }
+    renderPromptLibrarySelect();
+    updatePromptBadge();
+    renderPromptLog();
+    await loadPhotos();
+    await loadAlbums();
+    if(currentAlbum) await refreshCurrentAlbum();
+    showToast('已刪除此辨識結果');
+  }catch(err){
+    showToast('刪除此辨識結果失敗：' + (err.message || ''));
   }
 }
 
