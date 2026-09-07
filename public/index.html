@@ -433,8 +433,12 @@
     display:inline-flex;align-items:center;gap:5px;
     font-size:11px;font-weight:700;color:var(--teal);
     background:#DCEAE6;border:1px solid rgba(30,89,81,0.22);
-    padding:2px 8px;border-radius:20px;
+    padding:2px 8px;border-radius:20px;cursor:pointer;
+    font-family:'Noto Sans TC',sans-serif;
   }
+  .album-chip:hover{border-color:var(--teal);background:#CFE1DC;}
+  .album-chip.is-active{background:var(--teal);border-color:var(--teal);color:var(--white);}
+  .album-chip.is-active b{color:var(--white);}
   .album-chip b{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-soft);}
   .log-run-album{
     display:inline-flex;align-items:center;font-weight:700;font-size:12px;
@@ -759,6 +763,7 @@ let currentPromptTemplate = DEFAULT_PROMPT;
 let promptVersion = 1;
 let promptLog = []; // {version, promptText, model, timestamp, results, rating, isBest, expanded}
 let promptLibrary = [];
+let promptAlbumFilters = new Map();
 let activePromptRunId = null;
 let activePromptRunVersion = null;
 let activePromptId = null;
@@ -1073,6 +1078,10 @@ async function loadPromptRuns(){
           jsonOpen:false
         }))
     );
+    const validPromptIds = new Set(promptLibrary.map(prompt=>String(prompt.id)));
+    [...promptAlbumFilters.keys()].forEach(promptId=>{
+      if(!validPromptIds.has(promptId)) promptAlbumFilters.delete(promptId);
+    });
     const maxVersion = promptLog.reduce((max, e)=>Math.max(max, Number(e.version)||0), 0);
     promptVersion = maxVersion + 1;
     updatePromptVersionLabel();
@@ -1140,7 +1149,10 @@ promptLogToggleBtn.addEventListener('click', (e)=>{
   setPromptLogExpanded(!promptLogBar.classList.contains('expanded'));
 });
 document.querySelectorAll('input[name="logScope"]').forEach(input=>{
-  input.addEventListener('change', renderPromptLog);
+  input.addEventListener('change', ()=>{
+    promptAlbumFilters.clear();
+    renderPromptLog();
+  });
 });
 
 document.getElementById('pickBtn').addEventListener('click', ()=>fileInput.click());
@@ -1878,17 +1890,17 @@ function renderMap(){
 }
 
 /* ---------------- Prompt test log ---------------- */
-function albumChipsMarkup(runs){
+function albumChipsMarkup(promptId, runs, activeAlbumId){
   const byAlbum = new Map();
   runs.forEach(run=>{
     const key = String(run.albumId || '');
     if(!key) return;
-    const current = byAlbum.get(key) || {name:run.albumName || '未知相簿', count:0};
+    const current = byAlbum.get(key) || {id:key, name:run.albumName || '未知相簿', count:0};
     current.count += 1;
     byAlbum.set(key, current);
   });
   return [...byAlbum.values()].map(album=>
-    `<span class="album-chip">${escapeHtml(album.name)}<b>${album.count}</b></span>`
+    `<button type="button" class="album-chip ${String(activeAlbumId || '')===String(album.id) ? 'is-active' : ''}" data-act="filter-album" data-prompt-id="${promptId}" data-album-id="${album.id}">${escapeHtml(album.name)}<b>${album.count}</b></button>`
   ).join('');
 }
 
@@ -1901,10 +1913,9 @@ function sameAlbumRunIndex(entry, runs){
 function renderPromptLog(){
   const list = document.getElementById('promptLogList');
   const empty = document.getElementById('promptLogEmpty');
-  const barHint = document.getElementById('promptLogBarHint');
   const scope = (document.querySelector('input[name="logScope"]:checked') || {}).value || 'album';
   const groups = promptLibrary.map(prompt=>{
-    const runs = (prompt.runs || [])
+    const scopedRuns = (prompt.runs || [])
       .filter(run=>scope === 'all' || (currentAlbum && String(run.albumId)===String(currentAlbum.id)))
       .map(run=>({
         ...run,
@@ -1914,10 +1925,17 @@ function renderPromptLog(){
         promptText: prompt.promptText,
         model: prompt.model || run.model
       }));
-    return {prompt, runs};
+    const activeAlbumId = promptAlbumFilters.get(String(prompt.id));
+    const runs = activeAlbumId
+      ? scopedRuns.filter(run=>String(run.albumId)===String(activeAlbumId))
+      : scopedRuns;
+    if(activeAlbumId && scopedRuns.length && !runs.length){
+      promptAlbumFilters.delete(String(prompt.id));
+      return {prompt, runs:scopedRuns, scopedRuns, activeAlbumId:null};
+    }
+    return {prompt, runs, scopedRuns, activeAlbumId};
   }).filter(group=>group.runs.length);
   const totalRuns = promptLibrary.reduce((sum, prompt)=>sum + (prompt.runs || []).length, 0);
-  const currentAlbumRuns = promptLog.length;
 
   if(!groups.length){
     empty.style.display = 'block';
@@ -1927,9 +1945,9 @@ function renderPromptLog(){
   }
   empty.style.display = 'none';
   document.getElementById('exportPromptLogBtn').disabled = totalRuns === 0;
-  list.innerHTML = groups.map(({prompt, runs})=>{
+  list.innerHTML = groups.map(({prompt, runs, scopedRuns, activeAlbumId})=>{
     const promptLabel = `Prompt v${prompt.version}${prompt.name ? '「'+prompt.name+'」' : ''}`;
-    const albumChips = albumChipsMarkup(runs);
+    const albumChips = albumChipsMarkup(prompt.id, scopedRuns, activeAlbumId);
     const runBlocks = runs.map(entry=>{
       const albumRunIndex = sameAlbumRunIndex(entry, runs);
       const runToneClass = `run-tone-${albumRunIndex % 5 + 1}`;
@@ -2032,6 +2050,13 @@ function renderPromptLog(){
         if(prompt) await deletePrompt(prompt);
       } else if(act==='delete-run'){
         if(entry) await deletePromptRun(entry);
+      } else if(act==='filter-album'){
+        if(!prompt) return;
+        const key = String(prompt.id);
+        const albumId = String(btn.dataset.albumId || '');
+        if(promptAlbumFilters.get(key) === albumId) promptAlbumFilters.delete(key);
+        else promptAlbumFilters.set(key, albumId);
+        renderPromptLog();
       } else if(act==='load-run'){
         if(!entry) return;
         await loadPromptRunResult(entry);

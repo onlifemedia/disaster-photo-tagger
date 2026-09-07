@@ -130,7 +130,7 @@ curl http://localhost:8088/api/health
 - 單張重新辨識會覆蓋同一個 Prompt Run + Photo 的舊結果，只保留最新一次；不會自動建立新的 Prompt Run 版本。
 - 每個相簿只能標記一個最佳 Prompt Run；標記最佳只會影響同一個相簿。
 - 每次 Prompt Run 完成、失敗或取消時，會把耗時秒數寫入 `prompt_runs.duration_seconds`，API 會回傳 `durationSeconds` 與 `completedAt`，前端會在 Prompt 測試紀錄顯示本次辨識耗時。
-- Prompt 測試紀錄以同一份 `prompts` 分組；同一個 Prompt 內會用相簿標籤顯示已套用的不同相簿，同一相簿的不同次 Prompt Run 會用不同色條區隔。
+- Prompt 測試紀錄以同一份 `prompts` 分組；同一個 Prompt 內會用相簿標籤顯示已套用的不同相簿，點擊相簿標籤可只顯示該本相簿的結果，再點一次可取消篩選；同一相簿的不同次 Prompt Run 會用不同色條區隔。
 - 刪除整份 Prompt 前，前端會顯示「確定要刪除此prompt嗎，刪除後將無法復原！」；確認後會刪除該 Prompt、所有相簿下的 Prompt Run、Queue jobs 與分析結果，但不會刪除照片。
 - 刪除單次辨識結果前，前端會顯示「確定要刪除此次辨識結果嗎，刪除後將無法復原！」；確認後只刪除該 `prompt_runs`、對應 `analysis_jobs` 與 `analysis_results`，保留 `prompts`、相簿與照片。
 - 前端不要求填寫使用者名稱，也不會送出使用者名稱；後端保留既有 `users` 資料表只是為了相容既有 SQLite schema。
@@ -450,7 +450,7 @@ V1 狀態已 completed
 同一個全站 Prompt 可以對應多本相簿的多個 Prompt Run
 ```
 
-Prompt 測試紀錄可以切換「只看目前相簿」或「全部相簿」，用來查看同一個 Prompt 在不同相簿上的分析結果。同一份 Prompt 內會用相簿標籤呈現不同相簿；同一相簿重跑多次時，前端會用不同色條區隔各次 Prompt Run。
+Prompt 測試紀錄可以切換「只看目前相簿」或「全部相簿」，用來查看同一個 Prompt 在不同相簿上的分析結果。同一份 Prompt 內會用相簿標籤呈現不同相簿；點擊相簿標籤可只顯示該本相簿的結果，再點一次可取消篩選。同一相簿重跑多次時，前端會用不同色條區隔各次 Prompt Run。
 
 ### Use Case 7: 同一個 Prompt Run 被重複觸發
 
